@@ -1,9 +1,17 @@
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import {
+  Outlet,
+  createFileRoute,
+  redirect,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { useCommandPaletteStore } from "../commandPaletteStore";
+import { usePrimaryEnvironmentId } from "../environments/primary";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import {
+  startNewChatThread,
   startNewLocalThreadFromContext,
   startNewThreadFromContext,
 } from "../lib/chatThreadActions";
@@ -11,6 +19,7 @@ import { isTerminalFocused } from "../lib/terminalFocus";
 import { resolveShortcutCommand } from "../keybindings";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { useThreadSelectionStore } from "../threadSelectionStore";
+import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
 import { useSettings } from "~/hooks/useSettings";
 import { useServerKeybindings } from "~/rpc/serverState";
@@ -27,8 +36,40 @@ function ChatRouteGlobalShortcuts() {
       : false,
   );
   const appSettings = useSettings();
+  const navigate = useNavigate();
+  const primaryEnvironmentId = usePrimaryEnvironmentId();
+  const pathname = useLocation({ select: (loc) => loc.pathname });
+  const isOnChatSurface = pathname.startsWith("/chat");
 
   useEffect(() => {
+    const runChatShortcut = async () => {
+      if (!primaryEnvironmentId) {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Cannot start chat",
+            description: "No active environment is available.",
+          }),
+        );
+        return;
+      }
+      try {
+        const result = await startNewChatThread({ environmentId: primaryEnvironmentId });
+        await navigate({
+          to: "/chat/$environmentId/$threadId",
+          params: { environmentId: result.environmentId, threadId: result.threadId },
+        });
+      } catch (error) {
+        toastManager.add(
+          stackedThreadToast({
+            type: "error",
+            title: "Could not start chat",
+            description: error instanceof Error ? error.message : "An unexpected error occurred.",
+          }),
+        );
+      }
+    };
+
     const onWindowKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       const command = resolveShortcutCommand(event, keybindings, {
@@ -51,6 +92,10 @@ function ChatRouteGlobalShortcuts() {
       if (command === "chat.newLocal") {
         event.preventDefault();
         event.stopPropagation();
+        if (isOnChatSurface) {
+          void runChatShortcut();
+          return;
+        }
         void startNewLocalThreadFromContext({
           activeDraftThread,
           activeThread,
@@ -66,6 +111,10 @@ function ChatRouteGlobalShortcuts() {
       if (command === "chat.new") {
         event.preventDefault();
         event.stopPropagation();
+        if (isOnChatSurface) {
+          void runChatShortcut();
+          return;
+        }
         void startNewThreadFromContext({
           activeDraftThread,
           activeThread,
@@ -85,13 +134,16 @@ function ChatRouteGlobalShortcuts() {
   }, [
     activeDraftThread,
     activeThread,
+    appSettings.defaultThreadEnvMode,
     clearSelection,
-    handleNewThread,
-    keybindings,
     defaultProjectRef,
+    handleNewThread,
+    isOnChatSurface,
+    keybindings,
+    navigate,
+    primaryEnvironmentId,
     selectedThreadKeysSize,
     terminalOpen,
-    appSettings.defaultThreadEnvMode,
   ]);
 
   return null;

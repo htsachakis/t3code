@@ -10,8 +10,8 @@ The key constraint is that the current app is project-bound and coding-agent-ori
 
 - Branch: `feat/basic-chat-surface`
 - Status: in progress
-- Current phase: Phase 6 planning/execution
-- Next step: wire creation and sidebar flows for chat threads
+- Current phase: Phase 7 planning/execution
+- Next step: validation and hardening (contract/projector/runtime tests, web tests, ensure coding flows unchanged)
 
 ## Goals
 
@@ -156,7 +156,7 @@ Exit criteria:
 
 ## Phase 6: Navigation, Sidebar, and Creation Flows
 
-Status: pending
+Status: done
 
 1. Add a clear “Chats” entry point.
 2. Add “new chat” creation behavior.
@@ -223,3 +223,5 @@ Exit criteria:
 - 2026-04-22: Ran required gates after Phase 4 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
 - 2026-04-22: Completed Phase 5 `/chat` routes and `BasicChatView`: added route tree entries for `/chat` and `/chat/$environmentId/$threadId`, built dedicated `BasicChatView` component (~850 lines vs ChatView's ~3520) and `BasicChatHeader` component. BasicChatView reuses `MessagesTimeline`, `ChatComposer`, `ProviderStatusBanner`, `ThreadErrorBanner`, and `ExpandedImageDialog` without coding-agent UI (no diff panel, terminal drawer, branch toolbar, plan sidebar, PR dialog, or checkpoint revert).
 - 2026-04-22: Ran required gates after Phase 5 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
+- 2026-04-22: Completed Phase 6 navigation/sidebar/creation flows: introduced shared `startNewChatThread` helper (routes `thread.create` with `threadKind: "chat"` through the internal chat project) and split sidebar thread selection into `selectCodingSidebarThreadsAcrossEnvironments` and `selectChatSidebarThreadsAcrossEnvironments`. Added a dedicated `SidebarChatsSection` with a `/chat` entry point plus a new-chat button, wired a "New chat" command-palette action and "Recent Chats" group, taught the global `chat.new`/`chat.newLocal` shortcuts to create chat threads when on `/chat/*`, and made command-palette thread navigation route chat threads to `/chat/:env/:thread` while keeping coding threads on the existing project-scoped route.
+- 2026-04-22: Ran required gates after Phase 6 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).

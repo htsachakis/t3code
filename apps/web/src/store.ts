@@ -1777,6 +1777,32 @@ export function selectSidebarThreadsAcrossEnvironments(state: AppState): Sidebar
   );
 }
 
+/**
+ * Coding (agent) sidebar threads across all environments.  Chat threads are
+ * excluded because they live in a separate sidebar section and navigate to
+ * `/chat/:env/:thread` instead of the project-scoped thread route.
+ */
+export function selectCodingSidebarThreadsAcrossEnvironments(
+  state: AppState,
+): SidebarThreadSummary[] {
+  return selectSidebarThreadsAcrossEnvironments(state).filter(
+    (thread) => thread.threadKind !== "chat",
+  );
+}
+
+/**
+ * Chat sidebar threads across all environments.  Used to render the dedicated
+ * "Chats" sidebar section without leaking chat threads into the coding project
+ * tree.
+ */
+export function selectChatSidebarThreadsAcrossEnvironments(
+  state: AppState,
+): SidebarThreadSummary[] {
+  return selectSidebarThreadsAcrossEnvironments(state).filter(
+    (thread) => thread.threadKind === "chat",
+  );
+}
+
 export function selectSidebarThreadsForProjectRef(
   state: AppState,
   ref: ScopedProjectRef | null | undefined,

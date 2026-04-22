@@ -1,5 +1,22 @@
 import { scopeProjectRef } from "@t3tools/client-runtime";
-import type { EnvironmentId, ProjectId, ScopedProjectRef } from "@t3tools/contracts";
+import {
+  DEFAULT_MODEL_BY_PROVIDER,
+  DEFAULT_RUNTIME_MODE,
+  type EnvironmentId,
+  type ModelSelection,
+  type ProjectId,
+  type ProviderKind,
+  type ScopedProjectRef,
+  type ThreadId,
+} from "@t3tools/contracts";
+import {
+  INTERNAL_CHAT_PROJECT_ID,
+  normalizeModelSelectionForThreadKind,
+} from "@t3tools/shared/chatProject";
+import { createModelSelection } from "@t3tools/shared/model";
+import { truncate } from "@t3tools/shared/String";
+import { readEnvironmentApi } from "../environmentApi";
+import { newCommandId, newThreadId } from "./utils";
 import type { DraftThreadEnvMode } from "../composerDraftStore";
 
 interface ThreadContextLike {
@@ -95,4 +112,63 @@ export async function startNewLocalThreadFromContext(
 
   await context.handleNewThread(projectRef, buildDefaultThreadOptions(context));
   return true;
+}
+
+const DEFAULT_NEW_CHAT_TITLE = "New chat";
+
+export interface StartNewChatThreadInput {
+  readonly environmentId: EnvironmentId;
+  readonly modelSelection?: ModelSelection | null;
+  readonly availableProviders?: ReadonlyArray<ProviderKind> | null;
+  readonly title?: string;
+}
+
+export interface StartNewChatThreadResult {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+}
+
+/**
+ * Creates a new chat thread via `thread.create` with `threadKind: "chat"`.
+ *
+ * The server routes this command to the internal chat project and normalizes
+ * the model selection to a chat-capable provider.  Callers receive the
+ * new thread ref so they can navigate to `/chat/$environmentId/$threadId`.
+ */
+export async function startNewChatThread(
+  input: StartNewChatThreadInput,
+): Promise<StartNewChatThreadResult> {
+  const api = readEnvironmentApi(input.environmentId);
+  if (!api) {
+    throw new Error(`No environment API available for ${input.environmentId}`);
+  }
+
+  const baseModelSelection =
+    input.modelSelection ?? createModelSelection("codex", DEFAULT_MODEL_BY_PROVIDER.codex);
+  const modelSelection = normalizeModelSelectionForThreadKind({
+    threadKind: "chat",
+    modelSelection: baseModelSelection,
+    availableProviders: input.availableProviders ?? null,
+  });
+
+  const threadId = newThreadId();
+  const createdAt = new Date().toISOString();
+  const title = truncate(input.title?.trim() || DEFAULT_NEW_CHAT_TITLE);
+
+  await api.orchestration.dispatchCommand({
+    type: "thread.create",
+    commandId: newCommandId(),
+    threadId,
+    projectId: INTERNAL_CHAT_PROJECT_ID,
+    threadKind: "chat",
+    title,
+    modelSelection,
+    runtimeMode: DEFAULT_RUNTIME_MODE,
+    interactionMode: "default",
+    branch: null,
+    worktreePath: null,
+    createdAt,
+  });
+
+  return { environmentId: input.environmentId, threadId };
 }

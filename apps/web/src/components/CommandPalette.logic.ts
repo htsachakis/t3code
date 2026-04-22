@@ -229,7 +229,9 @@ export function filterCommandPaletteGroups(input: {
   if (isActionsFilter) {
     baseGroups = baseGroups.filter((group) => group.value === "actions");
   } else if (!input.isInSubmenu) {
-    baseGroups = baseGroups.filter((group) => group.value !== "recent-threads");
+    baseGroups = baseGroups.filter(
+      (group) => group.value !== "recent-threads" && group.value !== "recent-chats",
+    );
   }
 
   const searchableGroups = [...baseGroups];
@@ -334,6 +336,7 @@ export function getCommandPaletteMode(input: {
 export function buildRootGroups(input: {
   actionItems: ReadonlyArray<CommandPaletteActionItem | CommandPaletteSubmenuItem>;
   recentThreadItems: ReadonlyArray<CommandPaletteActionItem>;
+  recentChatThreadItems?: ReadonlyArray<CommandPaletteActionItem>;
 }): CommandPaletteGroup[] {
   const groups: CommandPaletteGroup[] = [];
   if (input.actionItems.length > 0) {
@@ -344,6 +347,13 @@ export function buildRootGroups(input: {
       value: "recent-threads",
       label: "Recent Threads",
       items: input.recentThreadItems,
+    });
+  }
+  if (input.recentChatThreadItems && input.recentChatThreadItems.length > 0) {
+    groups.push({
+      value: "recent-chats",
+      label: "Recent Chats",
+      items: input.recentChatThreadItems,
     });
   }
   return groups;

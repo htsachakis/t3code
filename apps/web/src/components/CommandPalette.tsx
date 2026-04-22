@@ -42,6 +42,7 @@ import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useSettings } from "../hooks/useSettings";
 import { readLocalApi } from "../localApi";
 import {
+  startNewChatThread,
   startNewThreadInProjectFromContext,
   startNewThreadFromContext,
 } from "../lib/chatThreadActions";
@@ -64,6 +65,8 @@ import { isTerminalFocused } from "../lib/terminalFocus";
 import { getLatestThreadForProject } from "../lib/threadSort";
 import { cn, isMacPlatform, isWindowsPlatform, newCommandId, newProjectId } from "../lib/utils";
 import {
+  selectChatSidebarThreadsAcrossEnvironments,
+  selectCodingSidebarThreadsAcrossEnvironments,
   selectProjectsAcrossEnvironments,
   selectSidebarThreadsAcrossEnvironments,
   useStore,
@@ -107,6 +110,7 @@ import { ComposerHandleContext, useComposerHandleContext } from "../composerHand
 import type { ChatComposerHandle } from "./chat/ChatComposer";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
+const EMPTY_PROJECT_TITLE_BY_ID: ReadonlyMap<ProjectId, string> = new Map();
 const BROWSE_STALE_TIME_MS = 30_000;
 
 function getLocalFileManagerName(platform: string): string {
@@ -218,6 +222,8 @@ function OpenCommandPaletteDialog() {
     useHandleNewThread();
   const projects = useStore(useShallow(selectProjectsAcrossEnvironments));
   const threads = useStore(useShallow(selectSidebarThreadsAcrossEnvironments));
+  const codingThreads = useStore(useShallow(selectCodingSidebarThreadsAcrossEnvironments));
+  const chatThreads = useStore(useShallow(selectChatSidebarThreadsAcrossEnvironments));
   const keybindings = useServerKeybindings();
   const [viewStack, setViewStack] = useState<CommandPaletteView[]>([]);
   const currentView = viewStack.at(-1) ?? null;
@@ -418,7 +424,7 @@ function OpenCommandPaletteDialog() {
   const openProjectFromSearch = useMemo(
     () => async (project: (typeof projects)[number]) => {
       const latestThread = getLatestThreadForProject(
-        threads.filter((thread) => thread.environmentId === project.environmentId),
+        codingThreads.filter((thread) => thread.environmentId === project.environmentId),
         project.id,
         settings.sidebarThreadSortOrder,
       );
@@ -437,11 +443,11 @@ function OpenCommandPaletteDialog() {
       });
     },
     [
+      codingThreads,
       handleNewThread,
       navigate,
       settings.defaultThreadEnvMode,
       settings.sidebarThreadSortOrder,
-      threads,
     ],
   );
 
@@ -497,10 +503,10 @@ function OpenCommandPaletteDialog() {
     ],
   );
 
-  const allThreadItems = useMemo(
+  const allCodingThreadItems = useMemo(
     () =>
       buildThreadActionItems({
-        threads,
+        threads: codingThreads,
         ...(activeThreadId ? { activeThreadId } : {}),
         projectTitleById,
         sortOrder: settings.sidebarThreadSortOrder,
@@ -514,9 +520,31 @@ function OpenCommandPaletteDialog() {
           });
         },
       }),
-    [activeThreadId, navigate, projectTitleById, settings.sidebarThreadSortOrder, threads],
+    [activeThreadId, codingThreads, navigate, projectTitleById, settings.sidebarThreadSortOrder],
   );
-  const recentThreadItems = allThreadItems.slice(0, RECENT_THREAD_LIMIT);
+  const allChatThreadItems = useMemo(
+    () =>
+      buildThreadActionItems({
+        threads: chatThreads,
+        ...(activeThreadId ? { activeThreadId } : {}),
+        projectTitleById: EMPTY_PROJECT_TITLE_BY_ID,
+        sortOrder: settings.sidebarThreadSortOrder,
+        icon: <MessageSquareIcon className={ITEM_ICON_CLASS} />,
+        runThread: async (thread) => {
+          await navigate({
+            to: "/chat/$environmentId/$threadId",
+            params: { environmentId: thread.environmentId, threadId: thread.id },
+          });
+        },
+      }),
+    [activeThreadId, chatThreads, navigate, settings.sidebarThreadSortOrder],
+  );
+  const allThreadItems = useMemo(
+    () => [...allCodingThreadItems, ...allChatThreadItems],
+    [allCodingThreadItems, allChatThreadItems],
+  );
+  const recentThreadItems = allCodingThreadItems.slice(0, RECENT_THREAD_LIMIT);
+  const recentChatThreadItems = allChatThreadItems.slice(0, RECENT_THREAD_LIMIT);
 
   function pushPaletteView(view: CommandPaletteView): void {
     setViewStack((previousViews) => [
@@ -697,6 +725,47 @@ function OpenCommandPaletteDialog() {
     });
   }
 
+  const handleNewChatFromPalette = useCallback(async () => {
+    if (!primaryEnvironmentId) {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Cannot start chat",
+          description: "No active environment is available.",
+        }),
+      );
+      return;
+    }
+    try {
+      const result = await startNewChatThread({ environmentId: primaryEnvironmentId });
+      await navigate({
+        to: "/chat/$environmentId/$threadId",
+        params: { environmentId: result.environmentId, threadId: result.threadId },
+      });
+    } catch (error) {
+      toastManager.add(
+        stackedThreadToast({
+          type: "error",
+          title: "Could not start chat",
+          description: error instanceof Error ? error.message : "An unexpected error occurred.",
+        }),
+      );
+    }
+  }, [navigate, primaryEnvironmentId]);
+
+  if (primaryEnvironmentId) {
+    actionItems.push({
+      kind: "action",
+      value: "action:new-chat",
+      searchTerms: ["new chat", "chat", "conversation", "assistant"],
+      title: "New chat",
+      icon: <MessageSquareIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        await handleNewChatFromPalette();
+      },
+    });
+  }
+
   actionItems.push({
     kind: "action",
     value: "action:settings",
@@ -708,7 +777,11 @@ function OpenCommandPaletteDialog() {
     },
   });
 
-  const rootGroups = buildRootGroups({ actionItems, recentThreadItems });
+  const rootGroups = buildRootGroups({
+    actionItems,
+    recentThreadItems,
+    recentChatThreadItems,
+  });
   const activeGroups = currentView ? currentView.groups : rootGroups;
 
   const filteredGroups = filterCommandPaletteGroups({
