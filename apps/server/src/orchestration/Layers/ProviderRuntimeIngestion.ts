@@ -13,6 +13,7 @@ import {
   type OrchestrationThreadActivity,
   type ProviderRuntimeEvent,
 } from "@t3tools/contracts";
+import { isChatThreadKind } from "@t3tools/shared/chatProject";
 import { Cache, Cause, Duration, Effect, Layer, Option, Stream } from "effect";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 
@@ -1099,6 +1100,7 @@ const make = Effect.gen(function* () {
       const readModel = yield* orchestrationEngine.getReadModel();
       const thread = readModel.threads.find((entry) => entry.id === event.threadId);
       if (!thread) return;
+      const isChatThread = isChatThreadKind(thread.threadKind);
 
       const now = event.createdAt;
       const eventTurnId = toTurnId(event.turnId);
@@ -1135,7 +1137,7 @@ const make = Effect.gen(function* () {
         }
       })();
       const acceptedTurnStartedSourcePlan =
-        event.type === "turn.started" && shouldApplyThreadLifecycle
+        !isChatThread && event.type === "turn.started" && shouldApplyThreadLifecycle
           ? yield* getSourceProposedPlanReferenceForAcceptedTurnStart(thread.id, eventTurnId)
           : null;
 
@@ -1226,7 +1228,7 @@ const make = Effect.gen(function* () {
           ? event.payload.delta
           : undefined;
       const proposedPlanDelta =
-        event.type === "turn.proposed.delta" ? event.payload.delta : undefined;
+        !isChatThread && event.type === "turn.proposed.delta" ? event.payload.delta : undefined;
 
       if (assistantDelta && assistantDelta.length > 0) {
         const turnId = toTurnId(event.turnId);
@@ -1327,7 +1329,7 @@ const make = Effect.gen(function* () {
             }
           : undefined;
       const proposedPlanCompletion =
-        event.type === "turn.proposed.completed"
+        !isChatThread && event.type === "turn.proposed.completed"
           ? {
               planId: proposedPlanIdFromEvent(event, thread.id),
               turnId: toTurnId(event.turnId),
@@ -1425,14 +1427,16 @@ const make = Effect.gen(function* () {
           yield* clearAssistantMessageIdsForTurn(thread.id, turnId);
           yield* clearAssistantSegmentStateForTurn(thread.id, turnId);
 
-          yield* finalizeBufferedProposedPlan({
-            event,
-            threadId: thread.id,
-            threadProposedPlans: thread.proposedPlans,
-            planId: proposedPlanIdForTurn(thread.id, turnId),
-            turnId,
-            updatedAt: now,
-          });
+          if (!isChatThread) {
+            yield* finalizeBufferedProposedPlan({
+              event,
+              threadId: thread.id,
+              threadProposedPlans: thread.proposedPlans,
+              planId: proposedPlanIdForTurn(thread.id, turnId),
+              turnId,
+              updatedAt: now,
+            });
+          }
         }
       }
 
@@ -1466,7 +1470,7 @@ const make = Effect.gen(function* () {
         }
       }
 
-      if (event.type === "thread.metadata.updated" && event.payload.name) {
+      if (!isChatThread && event.type === "thread.metadata.updated" && event.payload.name) {
         yield* orchestrationEngine.dispatch({
           type: "thread.meta.update",
           commandId: providerCommandId(event, "thread-meta-update"),
@@ -1475,7 +1479,7 @@ const make = Effect.gen(function* () {
         });
       }
 
-      if (event.type === "turn.diff.updated") {
+      if (!isChatThread && event.type === "turn.diff.updated") {
         const turnId = toTurnId(event.turnId);
         if (turnId && (yield* isGitRepoForThread(thread.id))) {
           // Skip if a checkpoint already exists for this turn. A real
@@ -1509,16 +1513,18 @@ const make = Effect.gen(function* () {
         }
       }
 
-      const activities = runtimeEventToActivities(event);
-      yield* Effect.forEach(activities, (activity) =>
-        orchestrationEngine.dispatch({
-          type: "thread.activity.append",
-          commandId: providerCommandId(event, "thread-activity-append"),
-          threadId: thread.id,
-          activity,
-          createdAt: activity.createdAt,
-        }),
-      ).pipe(Effect.asVoid);
+      if (!isChatThread) {
+        const activities = runtimeEventToActivities(event);
+        yield* Effect.forEach(activities, (activity) =>
+          orchestrationEngine.dispatch({
+            type: "thread.activity.append",
+            commandId: providerCommandId(event, "thread-activity-append"),
+            threadId: thread.id,
+            activity,
+            createdAt: activity.createdAt,
+          }),
+        ).pipe(Effect.asVoid);
+      }
     });
 
   const processDomainEvent = (_event: TurnStartRequestedDomainEvent) => Effect.void;

@@ -102,6 +102,7 @@ describe("ProviderCommandReactor", () => {
     readonly baseDir?: string;
     readonly threadModelSelection?: ModelSelection;
     readonly sessionModelSwitch?: "unsupported" | "in-session";
+    readonly threadKind?: "agent" | "chat";
   }) {
     const now = new Date().toISOString();
     const baseDir = input?.baseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "t3code-reactor-"));
@@ -298,7 +299,7 @@ describe("ProviderCommandReactor", () => {
         commandId: CommandId.make("cmd-thread-create"),
         threadId: ThreadId.make("thread-1"),
         projectId: asProjectId("project-1"),
-        threadKind: "agent",
+        threadKind: input?.threadKind ?? "agent",
         title: "Thread",
         modelSelection: modelSelection,
         interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
@@ -363,6 +364,59 @@ describe("ProviderCommandReactor", () => {
     const thread = readModel.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
     expect(thread?.session?.threadId).toBe("thread-1");
     expect(thread?.session?.runtimeMode).toBe("approval-required");
+  });
+
+  it("routes chat thread turns through the chat path without agent-only first-turn generation", async () => {
+    const harness = await createHarness({ threadKind: "chat" });
+    const now = new Date().toISOString();
+
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.meta.update",
+        commandId: CommandId.make("cmd-thread-chat-worktree-seed"),
+        threadId: ThreadId.make("thread-1"),
+        branch: "t3code/deadbeef",
+        worktreePath: "/tmp/provider-project-worktree",
+      }),
+    );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.interaction-mode.set",
+        commandId: CommandId.make("cmd-thread-chat-interaction-mode-plan"),
+        threadId: ThreadId.make("thread-1"),
+        interactionMode: "plan",
+        createdAt: now,
+      }),
+    );
+
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.turn.start",
+        commandId: CommandId.make("cmd-chat-turn-start"),
+        threadId: ThreadId.make("thread-1"),
+        message: {
+          messageId: asMessageId("user-message-chat"),
+          role: "user",
+          text: "hello chat runtime",
+          attachments: [],
+        },
+        interactionMode: "plan",
+        runtimeMode: "approval-required",
+        createdAt: now,
+      }),
+    );
+
+    await waitFor(() => harness.startSession.mock.calls.length === 1);
+    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+
+    expect(harness.startSession.mock.calls[0]?.[1]).not.toHaveProperty("cwd");
+    expect(harness.sendTurn.mock.calls[0]?.[0]).toMatchObject({
+      threadId: ThreadId.make("thread-1"),
+      input: "hello chat runtime",
+      interactionMode: "default",
+    });
+    expect(harness.generateBranchName).not.toHaveBeenCalled();
+    expect(harness.generateThreadTitle).not.toHaveBeenCalled();
   });
 
   it("generates a thread title on the first turn", async () => {

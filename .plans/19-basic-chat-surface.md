@@ -10,8 +10,8 @@ The key constraint is that the current app is project-bound and coding-agent-ori
 
 - Branch: `feat/basic-chat-surface`
 - Status: in progress
-- Current phase: Phase 2 planning/execution
-- Next step: implement hidden/system chat project wiring
+- Current phase: Phase 4 planning/execution
+- Next step: implement provider model and capability split for chat threads
 
 ## Goals
 
@@ -76,7 +76,7 @@ Exit criteria:
 
 ## Phase 2: Hidden/System Chat Project
 
-Status: pending
+Status: done
 
 1. Introduce a reserved internal project for chat threads per environment.
 2. Keep it out of normal project management UX.
@@ -90,7 +90,7 @@ Exit criteria:
 
 ## Phase 3: Server Chat Runtime
 
-Status: pending
+Status: done
 
 1. Add a server-side chat runtime path separate from the coding-agent runtime path.
 2. Route `thread.turn.start` based on `threadKind`.
@@ -215,3 +215,7 @@ Exit criteria:
 - 2026-04-22: Wrote initial implementation plan in `.plans/19-basic-chat-surface.md`
 - 2026-04-22: Completed Phase 1 domain work for `threadKind` (`agent | chat`) across contracts, server decider/projector/read model/persistence migration, and web store/thread typing. Existing agent flows default to `threadKind: "agent"`.
 - 2026-04-22: Ran required gates after Phase 1 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
+- 2026-04-22: Completed Phase 2 hidden/system chat project wiring with internal chat project constants, chat thread create/turn normalization to reserved project ID, chat workspace resolution disabling coding `cwd`, and UI selector filtering to hide the internal project.
+- 2026-04-22: Ran required gates after Phase 2 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
+- 2026-04-22: Completed Phase 3 server chat runtime routing: chat turns are routed through a chat-specific runtime behavior (no agent-only first-turn generation), and runtime ingestion now projects chat threads as conversational session + assistant message streams without agent workflow artifacts.
+- 2026-04-22: Ran required gates after Phase 3 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).

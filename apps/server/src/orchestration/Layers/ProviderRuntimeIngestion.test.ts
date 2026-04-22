@@ -196,7 +196,10 @@ describe("ProviderRuntimeIngestion", () => {
     }
   });
 
-  async function createHarness(options?: { serverSettings?: Partial<ServerSettings> }) {
+  async function createHarness(options?: {
+    serverSettings?: Partial<ServerSettings>;
+    threadKind?: "agent" | "chat";
+  }) {
     const workspaceRoot = makeTempDir("t3-provider-project-");
     fs.mkdirSync(path.join(workspaceRoot, ".git"));
     const provider = createProviderServiceHarness();
@@ -244,7 +247,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create"),
         threadId: ThreadId.make("thread-1"),
         projectId: asProjectId("project-1"),
-        threadKind: "agent",
+        threadKind: options?.threadKind ?? "agent",
         title: "Thread",
         modelSelection: {
           provider: "codex",
@@ -331,6 +334,96 @@ describe("ProviderRuntimeIngestion", () => {
     );
     expect(thread.session?.status).toBe("error");
     expect(thread.session?.lastError).toBe("turn failed");
+  });
+
+  it("keeps chat threads focused on session + assistant projection and skips agent workflow artifacts", async () => {
+    const harness = await createHarness({ threadKind: "chat" });
+    const now = new Date().toISOString();
+
+    harness.emit({
+      type: "turn.started",
+      eventId: asEventId("evt-chat-turn-started"),
+      provider: "codex",
+      createdAt: now,
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-chat-1"),
+    });
+    harness.emit({
+      type: "content.delta",
+      eventId: asEventId("evt-chat-content-delta"),
+      provider: "codex",
+      createdAt: new Date().toISOString(),
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-chat-1"),
+      payload: {
+        streamKind: "assistant_text",
+        delta: "Hello from chat runtime.",
+      },
+    });
+    harness.emit({
+      type: "turn.plan.updated",
+      eventId: asEventId("evt-chat-plan-updated"),
+      provider: "codex",
+      createdAt: new Date().toISOString(),
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-chat-1"),
+      payload: {
+        explanation: "this should be ignored for chat",
+        plan: [{ step: "ignored", status: "completed" }],
+      },
+    });
+    harness.emit({
+      type: "item.updated",
+      eventId: asEventId("evt-chat-tool-updated"),
+      provider: "codex",
+      createdAt: new Date().toISOString(),
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-chat-1"),
+      payload: {
+        itemType: "command_execution",
+        status: "in_progress",
+        title: "Run command",
+      },
+    });
+    harness.emit({
+      type: "turn.diff.updated",
+      eventId: asEventId("evt-chat-diff-updated"),
+      provider: "codex",
+      createdAt: new Date().toISOString(),
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-chat-1"),
+      payload: {
+        unifiedDiff: "diff --git a/a b/a",
+      },
+    });
+    harness.emit({
+      type: "turn.completed",
+      eventId: asEventId("evt-chat-turn-completed"),
+      provider: "codex",
+      createdAt: new Date().toISOString(),
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-chat-1"),
+      payload: {
+        state: "completed",
+      },
+    });
+
+    const thread = await waitForThread(
+      harness.engine,
+      (entry) =>
+        entry.session?.status === "ready" &&
+        entry.messages.some(
+          (message: ProviderRuntimeTestMessage) =>
+            message.role === "assistant" &&
+            message.turnId === "turn-chat-1" &&
+            !message.streaming &&
+            message.text.includes("Hello from chat runtime."),
+        ),
+    );
+
+    expect(thread.activities).toEqual([]);
+    expect(thread.checkpoints).toEqual([]);
+    expect(thread.proposedPlans).toEqual([]);
   });
 
   it("applies provider session.state.changed transitions directly", async () => {

@@ -213,10 +213,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
 
       const ensureInternalChatProject = Effect.fn("ensureInternalChatProject")(function* (
         createdAt: string,
-      ): Effect.fn.Return<
-        typeof INTERNAL_CHAT_PROJECT_ID,
-        OrchestrationDispatchCommandError
-      > {
+      ): Effect.fn.Return<typeof INTERNAL_CHAT_PROJECT_ID, OrchestrationDispatchCommandError> {
         const projectExists = () =>
           orchestrationEngine
             .getReadModel()

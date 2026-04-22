@@ -12,6 +12,7 @@ import {
   type TurnId,
 } from "@t3tools/contracts";
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
+import { isChatThreadKind } from "@t3tools/shared/chatProject";
 import { Cache, Cause, Duration, Effect, Equal, Layer, Option, Schema, Stream } from "effect";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 
@@ -577,9 +578,10 @@ const make = Effect.gen(function* () {
       return;
     }
 
+    const isChatThread = isChatThreadKind(thread.threadKind);
     const isFirstUserMessageTurn =
       thread.messages.filter((entry) => entry.role === "user").length === 1;
-    if (isFirstUserMessageTurn) {
+    if (!isChatThread && isFirstUserMessageTurn) {
       const generationCwd =
         resolveThreadWorkspaceCwd({
           thread,
@@ -650,7 +652,7 @@ const make = Effect.gen(function* () {
       ...(event.payload.modelSelection !== undefined
         ? { modelSelection: event.payload.modelSelection }
         : {}),
-      interactionMode: event.payload.interactionMode,
+      interactionMode: isChatThread ? "default" : event.payload.interactionMode,
       createdAt: event.payload.createdAt,
     }).pipe(
       Effect.map(Option.some),
