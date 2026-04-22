@@ -37,6 +37,7 @@ import {
   spawnAndCollect,
   type CommandResult,
 } from "../providerSnapshot.ts";
+import { resolveClaudeExecutable } from "../claudeExecutable.ts";
 import { compareCliVersions } from "../cliVersion.ts";
 import { makeManagedServerProvider } from "../makeManagedServerProvider.ts";
 import { ClaudeProvider } from "../Services/ClaudeProvider.ts";
@@ -592,7 +593,7 @@ const probeClaudeCapabilities = (binaryPath: string) => {
       })(),
       options: {
         persistSession: false,
-        pathToClaudeCodeExecutable: binaryPath,
+        pathToClaudeCodeExecutable: resolveClaudeExecutable(binaryPath),
         abortController: abort,
         settingSources: ["user", "project", "local"],
         allowedTools: [],

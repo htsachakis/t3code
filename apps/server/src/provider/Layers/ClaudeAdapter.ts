@@ -66,6 +66,7 @@ import {
 import { resolveAttachmentPath } from "../../attachmentStore.ts";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
+import { resolveClaudeExecutable } from "../claudeExecutable.ts";
 import {
   getClaudeModelCapabilities,
   normalizeClaudeCliEffort,
@@ -2832,7 +2833,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
             }),
         ),
       );
-      const claudeBinaryPath = claudeSettings.binaryPath;
+      const claudeBinaryPath = resolveClaudeExecutable(claudeSettings.binaryPath);
       const extraArgs = parseCliArgs(claudeSettings.launchArgs).flags;
       const modelSelection =
         input.modelSelection?.provider === "claudeAgent" ? input.modelSelection : undefined;
