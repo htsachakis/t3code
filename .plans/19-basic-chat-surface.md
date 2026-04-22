@@ -10,8 +10,8 @@ The key constraint is that the current app is project-bound and coding-agent-ori
 
 - Branch: `feat/basic-chat-surface`
 - Status: in progress
-- Current phase: Phase 5 planning/execution
-- Next step: build dedicated `/chat` route/view wiring
+- Current phase: Phase 6 planning/execution
+- Next step: wire creation and sidebar flows for chat threads
 
 ## Goals
 
@@ -131,7 +131,7 @@ Exit criteria:
 
 ## Phase 5: `/chat` Routes and View
 
-Status: pending
+Status: done
 
 1. Add route tree entries for:
    - `/chat`
@@ -221,3 +221,5 @@ Exit criteria:
 - 2026-04-22: Ran required gates after Phase 3 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
 - 2026-04-22: Completed Phase 4 provider/model split by introducing shared thread-kind provider policy helpers, enforcing chat model-selection normalization server-side, and filtering chat thread provider/model picker options in the web composer to chat-capable providers.
 - 2026-04-22: Ran required gates after Phase 4 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
+- 2026-04-22: Completed Phase 5 `/chat` routes and `BasicChatView`: added route tree entries for `/chat` and `/chat/$environmentId/$threadId`, built dedicated `BasicChatView` component (~850 lines vs ChatView's ~3520) and `BasicChatHeader` component. BasicChatView reuses `MessagesTimeline`, `ChatComposer`, `ProviderStatusBanner`, `ThreadErrorBanner`, and `ExpandedImageDialog` without coding-agent UI (no diff panel, terminal drawer, branch toolbar, plan sidebar, PR dialog, or checkpoint revert).
+- 2026-04-22: Ran required gates after Phase 5 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
