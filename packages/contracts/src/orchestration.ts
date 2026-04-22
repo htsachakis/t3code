@@ -555,6 +555,12 @@ export const ThreadTurnStartCommand = Schema.Struct({
   ),
   bootstrap: Schema.optional(ThreadTurnStartBootstrap),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  /**
+   * Optional user-supplied system prompt for the turn. Today only applied to
+   * chat threads; treated as an append to the provider's built-in system
+   * context (e.g. Claude Code's preset + append, Codex developer_instructions).
+   */
+  systemPrompt: Schema.optional(Schema.NullOr(Schema.String)),
   createdAt: IsoDateTime,
 });
 
@@ -574,6 +580,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   bootstrap: Schema.optional(ThreadTurnStartBootstrap),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  systemPrompt: Schema.optional(Schema.NullOr(Schema.String)),
   createdAt: IsoDateTime,
 });
 
@@ -874,6 +881,12 @@ export const ThreadTurnStartRequestedPayload = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROVIDER_INTERACTION_MODE)),
   ),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  /**
+   * Optional user-supplied system prompt recorded on the turn-start event.
+   * The provider command reactor forwards it to the provider session as an
+   * append to the built-in system context (chat threads only).
+   */
+  systemPrompt: Schema.optional(Schema.NullOr(Schema.String)),
   createdAt: IsoDateTime,
 });
 

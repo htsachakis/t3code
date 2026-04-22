@@ -263,6 +263,7 @@ const make = Effect.gen(function* () {
     createdAt: string,
     options?: {
       readonly modelSelection?: ModelSelection;
+      readonly systemPrompt?: string | null;
     },
   ) {
     const readModel = yield* orchestrationEngine.getReadModel();
@@ -301,6 +302,10 @@ const make = Effect.gen(function* () {
         .listSessions()
         .pipe(Effect.map((sessions) => sessions.find((session) => session.threadId === threadId)));
 
+    const trimmedSystemPrompt =
+      typeof options?.systemPrompt === "string" && options.systemPrompt.trim().length > 0
+        ? options.systemPrompt
+        : undefined;
     const startProviderSession = (input?: {
       readonly resumeCursor?: unknown;
       readonly provider?: ProviderKind;
@@ -312,6 +317,7 @@ const make = Effect.gen(function* () {
         modelSelection: desiredModelSelection,
         ...(input?.resumeCursor !== undefined ? { resumeCursor: input.resumeCursor } : {}),
         runtimeMode: desiredRuntimeMode,
+        ...(trimmedSystemPrompt !== undefined ? { systemPrompt: trimmedSystemPrompt } : {}),
       });
 
     const bindSessionToThread = (session: ProviderSession) =>
@@ -404,6 +410,7 @@ const make = Effect.gen(function* () {
     readonly attachments?: ReadonlyArray<ChatAttachment>;
     readonly modelSelection?: ModelSelection;
     readonly interactionMode?: "default" | "plan";
+    readonly systemPrompt?: string | null;
     readonly createdAt: string;
   }) {
     const thread = yield* resolveThread(input.threadId);
@@ -412,11 +419,12 @@ const make = Effect.gen(function* () {
         new Error(`Thread '${input.threadId}' was not found in read model.`),
       );
     }
-    yield* ensureSessionForThread(
-      input.threadId,
-      input.createdAt,
-      input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {},
-    );
+    yield* ensureSessionForThread(input.threadId, input.createdAt, {
+      ...(input.modelSelection !== undefined ? { modelSelection: input.modelSelection } : {}),
+      ...(input.systemPrompt !== undefined && input.systemPrompt !== null
+        ? { systemPrompt: input.systemPrompt }
+        : {}),
+    });
     if (input.modelSelection !== undefined) {
       threadModelSelections.set(input.threadId, input.modelSelection);
     }
@@ -443,12 +451,18 @@ const make = Effect.gen(function* () {
           : requestedModelSelection
         : input.modelSelection;
 
+    const normalizedSystemPrompt =
+      typeof input.systemPrompt === "string" && input.systemPrompt.trim().length > 0
+        ? input.systemPrompt
+        : undefined;
+
     return {
       threadId: input.threadId,
       ...(normalizedInput ? { input: normalizedInput } : {}),
       ...(normalizedAttachments.length > 0 ? { attachments: normalizedAttachments } : {}),
       ...(modelForTurn !== undefined ? { modelSelection: modelForTurn } : {}),
       ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
+      ...(normalizedSystemPrompt !== undefined ? { systemPrompt: normalizedSystemPrompt } : {}),
     };
   });
 
@@ -653,6 +667,9 @@ const make = Effect.gen(function* () {
         ? { modelSelection: event.payload.modelSelection }
         : {}),
       interactionMode: isChatThread ? "default" : event.payload.interactionMode,
+      ...(isChatThread && event.payload.systemPrompt !== undefined
+        ? { systemPrompt: event.payload.systemPrompt }
+        : {}),
       createdAt: event.payload.createdAt,
     }).pipe(
       Effect.map(Option.some),

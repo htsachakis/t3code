@@ -2864,6 +2864,11 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(fastMode ? { fastMode: true } : {}),
       };
 
+      const trimmedSystemPromptAppend =
+        typeof input.systemPrompt === "string" && input.systemPrompt.trim().length > 0
+          ? input.systemPrompt
+          : undefined;
+
       const queryOptions: ClaudeQueryOptions = {
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(apiModelId ? { model: apiModelId } : {}),
@@ -2883,6 +2888,17 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(Object.keys(settings).length > 0 ? { settings } : {}),
         ...(existingResumeSessionId ? { resume: existingResumeSessionId } : {}),
         ...(newSessionId ? { sessionId: newSessionId } : {}),
+        // Keep Claude Code's built-in system prompt as the preset and append
+        // the user-supplied persona text to it, rather than replacing it.
+        ...(trimmedSystemPromptAppend !== undefined
+          ? {
+              systemPrompt: {
+                type: "preset" as const,
+                preset: "claude_code" as const,
+                append: trimmedSystemPromptAppend,
+              },
+            }
+          : {}),
         includePartialMessages: true,
         canUseTool,
         env: process.env,

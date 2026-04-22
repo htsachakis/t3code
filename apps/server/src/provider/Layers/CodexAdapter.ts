@@ -1513,6 +1513,9 @@ const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
         ...(fastMode === true ? { serviceTier: "fast" } : {}),
         ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
         ...(codexAttachments.length > 0 ? { attachments: codexAttachments } : {}),
+        ...(typeof input.systemPrompt === "string" && input.systemPrompt.trim().length > 0
+          ? { systemPromptAppend: input.systemPrompt }
+          : {}),
       })
       .pipe(Effect.mapError((cause) => mapCodexRuntimeError(input.threadId, "turn/start", cause)));
   });

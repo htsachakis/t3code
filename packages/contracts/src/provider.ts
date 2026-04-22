@@ -55,6 +55,12 @@ export const ProviderSessionStartInput = Schema.Struct({
   approvalPolicy: Schema.optional(ProviderApprovalPolicy),
   sandboxMode: Schema.optional(ProviderSandboxMode),
   runtimeMode: RuntimeMode,
+  /**
+   * Optional user-supplied system prompt. Currently populated for chat threads
+   * so the persona can be passed to the provider session at startup (Claude
+   * append preset, Codex developer_instructions).
+   */
+  systemPrompt: Schema.optional(Schema.String),
 });
 export type ProviderSessionStartInput = typeof ProviderSessionStartInput.Type;
 
@@ -68,6 +74,12 @@ export const ProviderSendTurnInput = Schema.Struct({
   ),
   modelSelection: Schema.optional(ModelSelection),
   interactionMode: Schema.optional(ProviderInteractionMode),
+  /**
+   * Optional user-supplied system prompt. Adapters treat this as an append
+   * to the provider's built-in system context when starting (or, for Codex,
+   * continuing) a session. Today only populated for chat threads.
+   */
+  systemPrompt: Schema.optional(Schema.String),
 });
 export type ProviderSendTurnInput = typeof ProviderSendTurnInput.Type;
 

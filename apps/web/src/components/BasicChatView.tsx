@@ -529,20 +529,16 @@ export default function BasicChatView(props: BasicChatViewProps) {
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
     const isFirstMessage = activeThread.messages.length === 0;
-    const personaSystemPrompt = isFirstMessage
-      ? usePersonaStore.getState().getPersonaForThread(routeThreadKey).systemPrompt.trim()
-      : "";
-    const baseMessageText = messageTextForSend || IMAGE_ONLY_BOOTSTRAP_PROMPT;
-    const injectedMessageText =
-      personaSystemPrompt.length > 0
-        ? `[System instructions]\n${personaSystemPrompt}\n\n[User]\n${baseMessageText}`
-        : baseMessageText;
+    const personaSystemPrompt = usePersonaStore
+      .getState()
+      .getPersonaForThread(routeThreadKey)
+      .systemPrompt.trim();
     const outgoingMessageText = formatOutgoingPrompt({
       provider: ctxSelectedProvider,
       model: ctxSelectedModel,
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
-      text: injectedMessageText,
+      text: messageTextForSend || IMAGE_ONLY_BOOTSTRAP_PROMPT,
     });
     const turnAttachmentsPromise = Promise.all(
       composerImagesSnapshot.map(async (image) => ({
@@ -620,6 +616,7 @@ export default function BasicChatView(props: BasicChatViewProps) {
         titleSeed: title,
         runtimeMode,
         interactionMode,
+        ...(personaSystemPrompt.length > 0 ? { systemPrompt: personaSystemPrompt } : {}),
         createdAt: messageCreatedAt,
       });
       turnStartSucceeded = true;
