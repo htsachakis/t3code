@@ -10,8 +10,8 @@ The key constraint is that the current app is project-bound and coding-agent-ori
 
 - Branch: `feat/basic-chat-surface`
 - Status: in progress
-- Current phase: Phase 4 planning/execution
-- Next step: implement provider model and capability split for chat threads
+- Current phase: Phase 5 planning/execution
+- Next step: build dedicated `/chat` route/view wiring
 
 ## Goals
 
@@ -111,7 +111,7 @@ Exit criteria:
 
 ## Phase 4: Provider Model and Capability Split
 
-Status: pending
+Status: done
 
 1. Add dedicated chat-facing provider entries, likely:
    - `openaiChat`
@@ -219,3 +219,5 @@ Exit criteria:
 - 2026-04-22: Ran required gates after Phase 2 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
 - 2026-04-22: Completed Phase 3 server chat runtime routing: chat turns are routed through a chat-specific runtime behavior (no agent-only first-turn generation), and runtime ingestion now projects chat threads as conversational session + assistant message streams without agent workflow artifacts.
 - 2026-04-22: Ran required gates after Phase 3 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
+- 2026-04-22: Completed Phase 4 provider/model split by introducing shared thread-kind provider policy helpers, enforcing chat model-selection normalization server-side, and filtering chat thread provider/model picker options in the web composer to chat-capable providers.
+- 2026-04-22: Ran required gates after Phase 4 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).

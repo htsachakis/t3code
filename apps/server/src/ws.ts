@@ -57,6 +57,7 @@ import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import {
   INTERNAL_CHAT_PROJECT_ID,
   INTERNAL_CHAT_PROJECT_TITLE,
+  normalizeModelSelectionForThreadKind,
   isChatThreadKind,
   isInternalChatProjectId,
 } from "@t3tools/shared/chatProject";
@@ -253,16 +254,50 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         return INTERNAL_CHAT_PROJECT_ID;
       });
 
+      const getEnabledProviderKinds = Effect.fn("getEnabledProviderKinds")(function* () {
+        const providers = yield* providerRegistry.getProviders;
+        return providers
+          .filter((provider) => provider.enabled)
+          .map((provider) => provider.provider);
+      });
+
+      const getThreadKindById = Effect.fn("getThreadKindById")(function* (threadId: ThreadId) {
+        const readModel = yield* orchestrationEngine.getReadModel();
+        return readModel.threads.find((thread) => thread.id === threadId)?.threadKind;
+      });
+
       const normalizeChatThreadCommand = Effect.fn("normalizeChatThreadCommand")(function* (
         command: OrchestrationCommand,
       ): Effect.fn.Return<OrchestrationCommand, OrchestrationDispatchCommandError> {
         if (command.type === "thread.create" && isChatThreadKind(command.threadKind)) {
           const projectId = yield* ensureInternalChatProject(command.createdAt);
+          const enabledProviderKinds = yield* getEnabledProviderKinds();
           return {
             ...command,
             projectId,
+            modelSelection: normalizeModelSelectionForThreadKind({
+              threadKind: command.threadKind,
+              modelSelection: command.modelSelection,
+              availableProviders: enabledProviderKinds,
+            }),
             branch: null,
             worktreePath: null,
+          };
+        }
+
+        if (command.type === "thread.meta.update" && command.modelSelection !== undefined) {
+          const threadKind = yield* getThreadKindById(command.threadId);
+          if (!isChatThreadKind(threadKind)) {
+            return command;
+          }
+          const enabledProviderKinds = yield* getEnabledProviderKinds();
+          return {
+            ...command,
+            modelSelection: normalizeModelSelectionForThreadKind({
+              threadKind,
+              modelSelection: command.modelSelection,
+              availableProviders: enabledProviderKinds,
+            }),
           };
         }
 
@@ -270,24 +305,55 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           return command;
         }
         const bootstrapCreateThread = command.bootstrap?.createThread;
-        if (!bootstrapCreateThread || !isChatThreadKind(bootstrapCreateThread.threadKind)) {
+        if (bootstrapCreateThread && isChatThreadKind(bootstrapCreateThread.threadKind)) {
+          const projectId = yield* ensureInternalChatProject(bootstrapCreateThread.createdAt);
+          const enabledProviderKinds = yield* getEnabledProviderKinds();
+          return {
+            ...command,
+            ...(command.modelSelection !== undefined
+              ? {
+                  modelSelection: normalizeModelSelectionForThreadKind({
+                    threadKind: bootstrapCreateThread.threadKind,
+                    modelSelection: command.modelSelection,
+                    availableProviders: enabledProviderKinds,
+                  }),
+                }
+              : {}),
+            bootstrap: {
+              ...command.bootstrap,
+              createThread: {
+                ...bootstrapCreateThread,
+                projectId,
+                modelSelection: normalizeModelSelectionForThreadKind({
+                  threadKind: bootstrapCreateThread.threadKind,
+                  modelSelection: bootstrapCreateThread.modelSelection,
+                  availableProviders: enabledProviderKinds,
+                }),
+                branch: null,
+                worktreePath: null,
+              },
+              prepareWorktree: undefined,
+              runSetupScript: false,
+            },
+          };
+        }
+
+        if (command.modelSelection === undefined) {
           return command;
         }
 
-        const projectId = yield* ensureInternalChatProject(bootstrapCreateThread.createdAt);
+        const threadKind = yield* getThreadKindById(command.threadId);
+        if (!isChatThreadKind(threadKind)) {
+          return command;
+        }
+        const enabledProviderKinds = yield* getEnabledProviderKinds();
         return {
           ...command,
-          bootstrap: {
-            ...command.bootstrap,
-            createThread: {
-              ...bootstrapCreateThread,
-              projectId,
-              branch: null,
-              worktreePath: null,
-            },
-            prepareWorktree: undefined,
-            runSetupScript: false,
-          },
+          modelSelection: normalizeModelSelectionForThreadKind({
+            threadKind,
+            modelSelection: command.modelSelection,
+            availableProviders: enabledProviderKinds,
+          }),
         };
       });
 

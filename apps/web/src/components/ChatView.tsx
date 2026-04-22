@@ -30,6 +30,11 @@ import {
   createModelSelection,
   resolvePromptInjectedEffort,
 } from "@t3tools/shared/model";
+import {
+  filterEntriesByThreadKindProvider,
+  isProviderAllowedForThreadKind,
+  resolveThreadKindProvider,
+} from "@t3tools/shared/chatProject";
 import { projectScriptCwd, projectScriptRuntimeEnv } from "@t3tools/shared/projectScripts";
 import { truncate } from "@t3tools/shared/String";
 import { Debouncer } from "@tanstack/react-pacer";
@@ -113,7 +118,7 @@ import {
   projectScriptIdFromCommand,
 } from "~/projectScripts";
 import { newCommandId, newDraftId, newMessageId, newThreadId } from "~/lib/utils";
-import { getProviderModelCapabilities, resolveSelectableProvider } from "../providerModels";
+import { getProviderModelCapabilities } from "../providerModels";
 import { useSettings } from "../hooks/useSettings";
 import { resolveAppModelSelection } from "../modelSelection";
 import { isTerminalFocused } from "../lib/terminalFocus";
@@ -1030,13 +1035,18 @@ export default function ChatView(props: ChatViewProps) {
   ]);
 
   const selectedProviderByThreadId = composerActiveProvider ?? null;
+  const activeThreadKind = activeThread?.threadKind ?? "agent";
   const threadProvider =
     activeThread?.modelSelection.provider ?? activeProject?.defaultModelSelection?.provider ?? null;
-  const lockedProvider = deriveLockedProvider({
+  const rawLockedProvider = deriveLockedProvider({
     thread: activeThread,
     selectedProvider: selectedProviderByThreadId,
     threadProvider,
   });
+  const lockedProvider =
+    rawLockedProvider && isProviderAllowedForThreadKind(rawLockedProvider, activeThreadKind)
+      ? rawLockedProvider
+      : null;
   const primaryServerConfig = useServerConfig();
   const activeEnvRuntimeState = useSavedEnvironmentRuntimeStore((s) =>
     activeThread?.environmentId ? s.byId[activeThread.environmentId] : null,
@@ -1049,10 +1059,20 @@ export default function ChatView(props: ChatViewProps) {
       ? primaryServerConfig
       : (activeEnvRuntimeState?.serverConfig ?? primaryServerConfig);
   const providerStatuses = serverConfig?.providers ?? EMPTY_PROVIDERS;
-  const unlockedSelectedProvider = resolveSelectableProvider(
-    providerStatuses,
-    selectedProviderByThreadId ?? threadProvider ?? "codex",
+  const threadProviderStatuses = useMemo(
+    () => filterEntriesByThreadKindProvider(providerStatuses, activeThreadKind),
+    [activeThreadKind, providerStatuses],
   );
+  const enabledThreadProviderKinds = useMemo(
+    () =>
+      threadProviderStatuses.filter((status) => status.enabled).map((status) => status.provider),
+    [threadProviderStatuses],
+  );
+  const unlockedSelectedProvider = resolveThreadKindProvider({
+    threadKind: activeThreadKind,
+    requestedProvider: selectedProviderByThreadId ?? threadProvider ?? "codex",
+    availableProviders: enabledThreadProviderKinds,
+  });
   const selectedProvider: ProviderKind = lockedProvider ?? unlockedSelectedProvider;
   const phase = derivePhase(activeThread?.session ?? null);
   const threadActivities = activeThread?.activities ?? EMPTY_ACTIVITIES;
@@ -1426,8 +1446,8 @@ export default function ChatView(props: ChatViewProps) {
   const keybindings = useServerKeybindings();
   const availableEditors = useServerAvailableEditors();
   const activeProviderStatus = useMemo(
-    () => providerStatuses.find((status) => status.provider === selectedProvider) ?? null,
-    [selectedProvider, providerStatuses],
+    () => threadProviderStatuses.find((status) => status.provider === selectedProvider) ?? null,
+    [selectedProvider, threadProviderStatuses],
   );
   const activeProjectCwd = activeProject?.cwd ?? null;
   const activeThreadWorktreePath = activeThread?.worktreePath ?? null;
@@ -2594,7 +2614,7 @@ export default function ChatView(props: ChatViewProps) {
                 ? {
                     createThread: {
                       projectId: activeProject.id,
-                      threadKind: "agent" as const,
+                      threadKind: activeThread.threadKind,
                       title,
                       modelSelection: threadCreateModelSelection,
                       runtimeMode,
@@ -3048,7 +3068,7 @@ export default function ChatView(props: ChatViewProps) {
         commandId: newCommandId(),
         threadId: nextThreadId,
         projectId: activeProject.id,
-        threadKind: "agent",
+        threadKind: activeThread.threadKind,
         title: nextThreadTitle,
         modelSelection: nextThreadModelSelection,
         runtimeMode,
@@ -3136,11 +3156,15 @@ export default function ChatView(props: ChatViewProps) {
         scheduleComposerFocus();
         return;
       }
-      const resolvedProvider = resolveSelectableProvider(providerStatuses, provider);
+      const resolvedProvider = resolveThreadKindProvider({
+        threadKind: activeThreadKind,
+        requestedProvider: provider,
+        availableProviders: enabledThreadProviderKinds,
+      });
       const resolvedModel = resolveAppModelSelection(
         resolvedProvider,
         settings,
-        providerStatuses,
+        threadProviderStatuses,
         model,
       );
       const nextModelSelection: ModelSelection = {
@@ -3156,11 +3180,13 @@ export default function ChatView(props: ChatViewProps) {
     },
     [
       activeThread,
+      activeThreadKind,
+      enabledThreadProviderKinds,
       lockedProvider,
       scheduleComposerFocus,
       setComposerDraftModelSelection,
       setStickyComposerModelSelection,
-      providerStatuses,
+      threadProviderStatuses,
       settings,
     ],
   );
@@ -3367,7 +3393,7 @@ export default function ChatView(props: ChatViewProps) {
               runtimeMode={runtimeMode}
               interactionMode={interactionMode}
               lockedProvider={lockedProvider}
-              providerStatuses={providerStatuses as ServerProvider[]}
+              providerStatuses={threadProviderStatuses as ServerProvider[]}
               activeProjectDefaultModelSelection={activeProject?.defaultModelSelection}
               activeThreadModelSelection={activeThread?.modelSelection}
               activeThreadActivities={activeThread?.activities}

@@ -4,6 +4,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 
 import {
   CommandId,
+  DEFAULT_MODEL_BY_PROVIDER,
   DEFAULT_SERVER_SETTINGS,
   EnvironmentId,
   EventId,
@@ -3672,6 +3673,169 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         assert.equal(threadCreateCommand.threadKind, "chat");
         assert.equal(threadCreateCommand.branch, null);
         assert.equal(threadCreateCommand.worktreePath, null);
+      }
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("normalizes chat thread.create model selections to enabled chat providers", () =>
+    Effect.gen(function* () {
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      yield* buildAppUnderTest({
+        layers: {
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+            readEvents: () => Stream.empty,
+          },
+          providerRegistry: {
+            getProviders: Effect.succeed([
+              {
+                provider: "codex",
+                enabled: false,
+                installed: true,
+                version: "1.0.0",
+                status: "disabled",
+                auth: { status: "authenticated" },
+                checkedAt: "2026-04-11T00:00:00.000Z",
+                models: [],
+                slashCommands: [],
+                skills: [],
+              },
+              {
+                provider: "claudeAgent",
+                enabled: true,
+                installed: true,
+                version: "1.0.0",
+                status: "ready",
+                auth: { status: "authenticated" },
+                checkedAt: "2026-04-11T00:00:00.000Z",
+                models: [],
+                slashCommands: [],
+                skills: [],
+              },
+            ]),
+          },
+        },
+      });
+
+      const createdAt = new Date().toISOString();
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+            type: "thread.create",
+            commandId: CommandId.make("cmd-chat-thread-create-provider-normalize"),
+            threadId: ThreadId.make("thread-chat-provider-normalize"),
+            projectId: defaultProjectId,
+            threadKind: "chat",
+            title: "Chat thread",
+            modelSelection: {
+              provider: "cursor",
+              model: "auto",
+            },
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            branch: null,
+            worktreePath: null,
+            createdAt,
+          }),
+        ),
+      );
+
+      assert.equal(response.sequence, 2);
+      const threadCreateCommand = dispatchedCommands[1];
+      assertTrue(threadCreateCommand?.type === "thread.create");
+      if (threadCreateCommand?.type === "thread.create") {
+        assert.deepEqual(threadCreateCommand.modelSelection, {
+          provider: "claudeAgent",
+          model: DEFAULT_MODEL_BY_PROVIDER.claudeAgent,
+        });
+      }
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("normalizes chat thread.turn.start model overrides for existing chat threads", () =>
+    Effect.gen(function* () {
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      const chatThreadId = ThreadId.make("thread-chat-existing");
+      const readModel = makeDefaultOrchestrationReadModel();
+      const chatReadModel = {
+        ...readModel,
+        threads: [
+          {
+            ...readModel.threads[0]!,
+            id: chatThreadId,
+            threadKind: "chat" as const,
+          },
+        ],
+      };
+
+      yield* buildAppUnderTest({
+        layers: {
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+            getReadModel: () => Effect.succeed(chatReadModel),
+            readEvents: () => Stream.empty,
+          },
+          providerRegistry: {
+            getProviders: Effect.succeed([
+              {
+                provider: "claudeAgent",
+                enabled: true,
+                installed: true,
+                version: "1.0.0",
+                status: "ready",
+                auth: { status: "authenticated" },
+                checkedAt: "2026-04-11T00:00:00.000Z",
+                models: [],
+                slashCommands: [],
+                skills: [],
+              },
+            ]),
+          },
+        },
+      });
+
+      const createdAt = new Date().toISOString();
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+            type: "thread.turn.start",
+            commandId: CommandId.make("cmd-chat-turn-start-provider-normalize"),
+            threadId: chatThreadId,
+            message: {
+              messageId: MessageId.make("msg-chat-turn-provider-normalize"),
+              role: "user",
+              text: "hello",
+              attachments: [],
+            },
+            modelSelection: {
+              provider: "cursor",
+              model: "auto",
+            },
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            createdAt,
+          }),
+        ),
+      );
+
+      assert.equal(response.sequence, 1);
+      const turnStartCommand = dispatchedCommands[0];
+      assertTrue(turnStartCommand?.type === "thread.turn.start");
+      if (turnStartCommand?.type === "thread.turn.start") {
+        assert.deepEqual(turnStartCommand.modelSelection, {
+          provider: "claudeAgent",
+          model: DEFAULT_MODEL_BY_PROVIDER.claudeAgent,
+        });
       }
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
