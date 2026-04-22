@@ -376,6 +376,26 @@ export default function BasicChatView(props: BasicChatViewProps) {
     localDispatchStartedAt,
   );
 
+  // Per-thread component state (optimistic messages, in-flight dispatch,
+  // pending approval/input responses, expanded image) must be cleared when
+  // switching threads. The route reuses this component instance across
+  // thread switches, so without this reset an optimistic message from
+  // thread A leaks into thread B's timeline.
+  useEffect(() => {
+    setOptimisticUserMessages((existing) => {
+      for (const message of existing) {
+        revokeUserMessagePreviewUrls(message);
+      }
+      return [];
+    });
+    resetLocalDispatch();
+    setRespondingRequestIds([]);
+    setRespondingUserInputRequestIds([]);
+    setPendingUserInputAnswersByRequestId({});
+    setPendingUserInputQuestionIndexByRequestId({});
+    setExpandedImage(null);
+  }, [resetLocalDispatch, threadId]);
+
   // Project resolution (chat threads still have a project — the internal chat project)
   const activeProjectRef = activeThread
     ? scopeProjectRef(activeThread.environmentId, activeThread.projectId)
