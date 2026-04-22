@@ -60,6 +60,7 @@ import { resolveAppModelSelection } from "../modelSelection";
 import { useSavedEnvironmentRuntimeStore } from "../environments/runtime";
 import { type ComposerImageAttachment, useComposerDraftStore } from "../composerDraftStore";
 import { appendTerminalContextsToPrompt, type TerminalContextDraft } from "../lib/terminalContext";
+import { usePersonaStore } from "../personaStore";
 import { ChatComposer, type ChatComposerHandle } from "./chat/ChatComposer";
 import { ExpandedImageDialog } from "./chat/ExpandedImageDialog";
 import { MessagesTimeline } from "./chat/MessagesTimeline";
@@ -527,12 +528,21 @@ export default function BasicChatView(props: BasicChatViewProps) {
     const messageTextForSend = appendTerminalContextsToPrompt(promptForSend, []);
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
+    const isFirstMessage = activeThread.messages.length === 0;
+    const personaSystemPrompt = isFirstMessage
+      ? usePersonaStore.getState().getPersonaForThread(routeThreadKey).systemPrompt.trim()
+      : "";
+    const baseMessageText = messageTextForSend || IMAGE_ONLY_BOOTSTRAP_PROMPT;
+    const injectedMessageText =
+      personaSystemPrompt.length > 0
+        ? `[System instructions]\n${personaSystemPrompt}\n\n[User]\n${baseMessageText}`
+        : baseMessageText;
     const outgoingMessageText = formatOutgoingPrompt({
       provider: ctxSelectedProvider,
       model: ctxSelectedModel,
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
-      text: messageTextForSend || IMAGE_ONLY_BOOTSTRAP_PROMPT,
+      text: injectedMessageText,
     });
     const turnAttachmentsPromise = Promise.all(
       composerImagesSnapshot.map(async (image) => ({
@@ -579,7 +589,6 @@ export default function BasicChatView(props: BasicChatViewProps) {
       const title = truncate(trimmed || "New chat");
 
       // Auto-title from first message
-      const isFirstMessage = activeThread.messages.length === 0;
       if (isFirstMessage && isServerThread) {
         await api.orchestration.dispatchCommand({
           type: "thread.meta.update",

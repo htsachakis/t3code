@@ -9,6 +9,7 @@ import {
   type ScopedProjectRef,
   type ThreadId,
 } from "@t3tools/contracts";
+import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime";
 import {
   INTERNAL_CHAT_PROJECT_ID,
   normalizeModelSelectionForThreadKind,
@@ -16,6 +17,7 @@ import {
 import { createModelSelection } from "@t3tools/shared/model";
 import { truncate } from "@t3tools/shared/String";
 import { readEnvironmentApi } from "../environmentApi";
+import { usePersonaStore } from "../personaStore";
 import { newCommandId, newThreadId } from "./utils";
 import type { DraftThreadEnvMode } from "../composerDraftStore";
 
@@ -169,6 +171,12 @@ export async function startNewChatThread(
     worktreePath: null,
     createdAt,
   });
+
+  usePersonaStore
+    .getState()
+    .associateActivePersonaWithThread(
+      scopedThreadKey(scopeThreadRef(input.environmentId, threadId)),
+    );
 
   return { environmentId: input.environmentId, threadId };
 }

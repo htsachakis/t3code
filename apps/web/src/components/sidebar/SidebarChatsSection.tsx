@@ -17,6 +17,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { resolveThreadRowClassName } from "../Sidebar.logic";
+import { PersonaPicker } from "./PersonaPicker";
 
 interface SidebarChatsSectionProps {
   readonly routeThreadKey: string | null;
@@ -71,7 +72,8 @@ export const SidebarChatsSection = memo(function SidebarChatsSection({
 
   return (
     <SidebarGroup className="px-2 py-2">
-      <div className="mb-1 flex items-center justify-end pl-2 pr-1.5">
+      <div className="mb-1 flex items-center justify-between gap-2 pl-1 pr-1.5">
+        <PersonaPicker />
         <Tooltip>
           <TooltipTrigger
             render={
@@ -79,7 +81,7 @@ export const SidebarChatsSection = memo(function SidebarChatsSection({
                 type="button"
                 aria-label="New chat"
                 data-testid="sidebar-new-chat-button"
-                className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
+                className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground"
                 onClick={() => {
                   void handleNewChat();
                 }}
