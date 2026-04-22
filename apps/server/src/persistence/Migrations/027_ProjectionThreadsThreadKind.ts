@@ -19,7 +19,8 @@ export default Effect.gen(function* () {
       END
       FROM orchestration_events AS events
       WHERE events.event_type = 'thread.created'
-        AND events.aggregate_id = projection_threads.thread_id
+        AND events.aggregate_kind = 'thread'
+        AND events.stream_id = projection_threads.thread_id
       ORDER BY events.sequence DESC
       LIMIT 1
     ), 'agent')
