@@ -9,9 +9,9 @@ The key constraint is that the current app is project-bound and coding-agent-ori
 ## Current Status
 
 - Branch: `feat/basic-chat-surface`
-- Status: planned
-- Current phase: architecture and scaffolding
-- Next step: confirm the domain shape for chat threads and start Phase 1
+- Status: in progress
+- Current phase: Phase 2 planning/execution
+- Next step: implement hidden/system chat project wiring
 
 ## Goals
 
@@ -57,7 +57,7 @@ Status: done
 
 ## Phase 1: Domain Model for Chat Threads
 
-Status: pending
+Status: done
 
 1. Add `threadKind: "agent" | "chat"` to the contracts and read model.
 2. Default all existing threads to `"agent"`.
@@ -213,3 +213,5 @@ Exit criteria:
 
 - 2026-04-22: Created branch `feat/basic-chat-surface`
 - 2026-04-22: Wrote initial implementation plan in `.plans/19-basic-chat-surface.md`
+- 2026-04-22: Completed Phase 1 domain work for `threadKind` (`agent | chat`) across contracts, server decider/projector/read model/persistence migration, and web store/thread typing. Existing agent flows default to `threadKind: "agent"`.
+- 2026-04-22: Ran required gates after Phase 1 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).

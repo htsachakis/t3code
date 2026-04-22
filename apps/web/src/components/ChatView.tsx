@@ -2594,6 +2594,7 @@ export default function ChatView(props: ChatViewProps) {
                 ? {
                     createThread: {
                       projectId: activeProject.id,
+                      threadKind: "agent" as const,
                       title,
                       modelSelection: threadCreateModelSelection,
                       runtimeMode,
@@ -3047,6 +3048,7 @@ export default function ChatView(props: ChatViewProps) {
         commandId: newCommandId(),
         threadId: nextThreadId,
         projectId: activeProject.id,
+        threadKind: "agent",
         title: nextThreadTitle,
         modelSelection: nextThreadModelSelection,
         runtimeMode,

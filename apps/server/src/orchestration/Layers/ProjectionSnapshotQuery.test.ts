@@ -273,6 +273,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         {
           id: ThreadId.make("thread-1"),
           projectId: asProjectId("project-1"),
+          threadKind: "agent",
           title: "Thread 1",
           modelSelection: {
             provider: "codex",
@@ -383,6 +384,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         {
           id: ThreadId.make("thread-1"),
           projectId: asProjectId("project-1"),
+          threadKind: "agent",
           title: "Thread 1",
           modelSelection: {
             provider: "codex",

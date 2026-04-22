@@ -216,6 +216,7 @@ export const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
           commandId: CommandId.make(crypto.randomUUID()),
           threadId: createdThreadId,
           projectId: nextProjectId,
+          threadKind: "agent",
           title: "New thread",
           modelSelection: nextProjectDefaultModelSelection,
           interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,

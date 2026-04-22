@@ -48,6 +48,7 @@ describe("deriveOrchestrationBatchEffects", () => {
       makeEvent("thread.created", {
         threadId: createdThreadId,
         projectId: ProjectId.make("project-1"),
+        threadKind: "agent",
         title: "Created thread",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
         runtimeMode: "full-access",
@@ -85,6 +86,7 @@ describe("deriveOrchestrationBatchEffects", () => {
       makeEvent("thread.created", {
         threadId,
         projectId: ProjectId.make("project-1"),
+        threadKind: "agent",
         title: "Recreated thread",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
         runtimeMode: "full-access",

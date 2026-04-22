@@ -82,6 +82,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     branch: null,
     worktreePath: null,
     ...overrides,
+    threadKind: overrides.threadKind ?? "agent",
   };
 }
 
@@ -116,6 +117,7 @@ function makeState(thread: Thread): AppState {
         environmentId: thread.environmentId,
         codexThreadId: thread.codexThreadId,
         projectId: thread.projectId,
+        threadKind: thread.threadKind,
         title: thread.title,
         modelSelection: thread.modelSelection,
         runtimeMode: thread.runtimeMode,
@@ -546,6 +548,7 @@ describe("incremental orchestration updates", () => {
       makeEvent("thread.created", {
         threadId,
         projectId: recreatedProjectId,
+        threadKind: "agent",
         title: "Recovered thread",
         modelSelection: {
           provider: "codex",

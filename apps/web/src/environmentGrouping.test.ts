@@ -74,6 +74,7 @@ function makeSidebarThreadSummary(
     hasPendingUserInput: false,
     hasActionableProposedPlan: false,
     ...overrides,
+    threadKind: overrides.threadKind ?? "agent",
   };
 }
 

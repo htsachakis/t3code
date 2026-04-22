@@ -90,6 +90,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.make("thread-1"),
           projectId: ProjectId.make("project-1"),
+          threadKind: "agent",
           title: "Thread 1",
           modelSelection: {
             provider: "codex",
@@ -362,6 +363,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           payload: {
             threadId: ThreadId.make("thread-clear-attachments"),
             projectId: ProjectId.make("project-clear-attachments"),
+            threadKind: "agent",
             title: "Thread Clear Attachments",
             modelSelection: {
               provider: "codex",
@@ -490,6 +492,7 @@ it.layer(
         payload: {
           threadId: ThreadId.make("thread-overwrite"),
           projectId: ProjectId.make("project-overwrite"),
+          threadKind: "agent",
           title: "Thread Overwrite",
           modelSelection: {
             provider: "codex",
@@ -638,6 +641,7 @@ it.layer(
         payload: {
           threadId: ThreadId.make("thread-rollback"),
           projectId: ProjectId.make("project-rollback"),
+          threadKind: "agent",
           title: "Thread Rollback",
           modelSelection: {
             provider: "codex",
@@ -767,6 +771,7 @@ it.layer(
         payload: {
           threadId,
           projectId: ProjectId.make("project-revert-files"),
+          threadKind: "agent",
           title: "Thread Revert Files",
           modelSelection: {
             provider: "codex",
@@ -975,6 +980,7 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("t3-projection-atta
           payload: {
             threadId,
             projectId: ProjectId.make("project-delete-files"),
+            threadKind: "agent",
             title: "Thread Delete Files",
             modelSelection: {
               provider: "codex",
@@ -1138,6 +1144,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.make("thread-a"),
           projectId: ProjectId.make("project-a"),
+          threadKind: "agent",
           title: "Thread A",
           modelSelection: {
             provider: "codex",
@@ -1265,6 +1272,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.make("thread-empty"),
           projectId: ProjectId.make("project-empty"),
+          threadKind: "agent",
           title: "Thread Empty",
           modelSelection: {
             provider: "codex",
@@ -1405,6 +1413,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           payload: {
             threadId: ThreadId.make("thread-conflict"),
             projectId: ProjectId.make("project-conflict"),
+            threadKind: "agent",
             title: "Thread Conflict",
             modelSelection: {
               provider: "codex",
@@ -1549,6 +1558,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.make("thread-stale-approval"),
           projectId: ProjectId.make("project-stale-approval"),
+          threadKind: "agent",
           title: "Thread Stale Approval",
           modelSelection: {
             provider: "codex",
@@ -1692,6 +1702,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.make("thread-nonstale-approval"),
           projectId: ProjectId.make("project-nonstale-approval"),
+          threadKind: "agent",
           title: "Thread Non-Stale Approval",
           modelSelection: {
             provider: "codex",
@@ -1872,6 +1883,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.make("thread-revert"),
           projectId: ProjectId.make("project-revert"),
+          threadKind: "agent",
           title: "Thread Revert",
           modelSelection: {
             provider: "codex",

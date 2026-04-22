@@ -253,6 +253,7 @@ export function projectEvent(
           {
             id: payload.threadId,
             projectId: payload.projectId,
+            threadKind: payload.threadKind,
             title: payload.title,
             modelSelection: payload.modelSelection,
             runtimeMode: payload.runtimeMode,

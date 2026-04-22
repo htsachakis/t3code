@@ -55,6 +55,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-1",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -116,6 +117,7 @@ describe("orchestration projector", () => {
             payload: {
               // missing required threadId
               projectId: "project-1",
+              threadKind: "agent",
               title: "demo",
               modelSelection: {
                 provider: "codex",
@@ -148,6 +150,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-1",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -251,6 +254,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-1",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -317,6 +321,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-1",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -374,6 +379,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-1",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -461,6 +467,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-1",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -676,6 +683,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-revert",
             projectId: "project-1",
+            threadKind: "agent",
             title: "demo",
             modelSelection: {
               provider: "codex",
@@ -829,6 +837,7 @@ describe("orchestration projector", () => {
           payload: {
             threadId: "thread-capped",
             projectId: "project-1",
+            threadKind: "agent",
             title: "capped",
             modelSelection: {
               provider: "codex",

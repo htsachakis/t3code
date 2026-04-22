@@ -244,6 +244,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create"),
         threadId: ThreadId.make("thread-1"),
         projectId: asProjectId("project-1"),
+        threadKind: "agent",
         title: "Thread",
         modelSelection: {
           provider: "codex",
@@ -907,6 +908,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create-plan-source"),
         threadId: sourceThreadId,
         projectId: asProjectId("project-1"),
+        threadKind: "agent",
         title: "Plan Source",
         modelSelection: {
           provider: "codex",
@@ -942,6 +944,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create-plan-target"),
         threadId: targetThreadId,
         projectId: asProjectId("project-1"),
+        threadKind: "agent",
         title: "Plan Target",
         modelSelection: {
           provider: "codex",
@@ -1094,6 +1097,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create-plan-source-guarded"),
         threadId: sourceThreadId,
         projectId: asProjectId("project-1"),
+        threadKind: "agent",
         title: "Plan Source",
         modelSelection: {
           provider: "codex",
@@ -1247,6 +1251,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create-plan-source-unrelated"),
         threadId: sourceThreadId,
         projectId: asProjectId("project-1"),
+        threadKind: "agent",
         title: "Plan Source",
         modelSelection: {
           provider: "codex",
@@ -1282,6 +1287,7 @@ describe("ProviderRuntimeIngestion", () => {
         commandId: CommandId.make("cmd-thread-create-plan-target-unrelated"),
         threadId: targetThreadId,
         projectId: asProjectId("project-1"),
+        threadKind: "agent",
         title: "Plan Target",
         modelSelection: {
           provider: "codex",

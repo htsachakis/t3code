@@ -117,6 +117,7 @@ describe("OrchestrationEngine", () => {
         {
           id: ThreadId.make("thread-bootstrap"),
           projectId: asProjectId("project-bootstrap"),
+          threadKind: "agent" as const,
           title: "Bootstrap Thread",
           modelSelection: {
             provider: "codex" as const,
@@ -210,6 +211,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-1-create"),
         threadId: ThreadId.make("thread-1"),
         projectId: asProjectId("project-1"),
+        threadKind: "agent" as const,
         title: "Thread",
         modelSelection: {
           provider: "codex",
@@ -270,6 +272,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-archive-create"),
         threadId: ThreadId.make("thread-archive"),
         projectId: asProjectId("project-archive"),
+        threadKind: "agent" as const,
         title: "Archive me",
         modelSelection: {
           provider: "codex",
@@ -337,6 +340,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-replay-create"),
         threadId: ThreadId.make("thread-replay"),
         projectId: asProjectId("project-replay"),
+        threadKind: "agent" as const,
         title: "replay",
         modelSelection: {
           provider: "codex",
@@ -405,6 +409,7 @@ describe("OrchestrationEngine", () => {
           commandId: CommandId.make("cmd-stream-thread-create"),
           threadId: ThreadId.make("thread-stream"),
           projectId: asProjectId("project-stream"),
+          threadKind: "agent" as const,
           title: "domain-stream",
           modelSelection: {
             provider: "codex",
@@ -457,6 +462,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-ack-create"),
         threadId: ThreadId.make("thread-ack"),
         projectId: asProjectId("project-ack"),
+        threadKind: "agent" as const,
         title: "Ack Thread",
         modelSelection: {
           provider: "codex",
@@ -494,6 +500,7 @@ describe("OrchestrationEngine", () => {
           commandId: CommandId.make("cmd-thread-missing-project"),
           threadId: ThreadId.make("thread-missing-project"),
           projectId: asProjectId("project-missing"),
+          threadKind: "agent" as const,
           title: "Missing Project Thread",
           modelSelection: {
             provider: "codex",
@@ -545,6 +552,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-turn-diff-create"),
         threadId: ThreadId.make("thread-turn-diff"),
         projectId: asProjectId("project-turn-diff"),
+        threadKind: "agent" as const,
         title: "Turn diff thread",
         modelSelection: {
           provider: "codex",
@@ -666,6 +674,7 @@ describe("OrchestrationEngine", () => {
           commandId: CommandId.make("cmd-flaky-1"),
           threadId: ThreadId.make("thread-flaky-fail"),
           projectId: asProjectId("project-flaky"),
+          threadKind: "agent" as const,
           title: "flaky-fail",
           modelSelection: {
             provider: "codex",
@@ -686,6 +695,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-flaky-2"),
         threadId: ThreadId.make("thread-flaky-ok"),
         projectId: asProjectId("project-flaky"),
+        threadKind: "agent" as const,
         title: "flaky-ok",
         modelSelection: {
           provider: "codex",
@@ -759,6 +769,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-atomic-create"),
         threadId: ThreadId.make("thread-atomic"),
         projectId: asProjectId("project-atomic"),
+        threadKind: "agent" as const,
         title: "atomic",
         modelSelection: {
           provider: "codex",
@@ -902,6 +913,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-sync-create"),
         threadId: ThreadId.make("thread-sync"),
         projectId: asProjectId("project-sync"),
+        threadKind: "agent" as const,
         title: "sync-before",
         modelSelection: {
           provider: "codex",
@@ -988,6 +1000,7 @@ describe("OrchestrationEngine", () => {
         commandId: CommandId.make("cmd-thread-duplicate-1"),
         threadId: ThreadId.make("thread-duplicate"),
         projectId: asProjectId("project-duplicate"),
+        threadKind: "agent" as const,
         title: "duplicate",
         modelSelection: {
           provider: "codex",
@@ -1008,6 +1021,7 @@ describe("OrchestrationEngine", () => {
           commandId: CommandId.make("cmd-thread-duplicate-2"),
           threadId: ThreadId.make("thread-duplicate"),
           projectId: asProjectId("project-duplicate"),
+          threadKind: "agent" as const,
           title: "duplicate",
           modelSelection: {
             provider: "codex",

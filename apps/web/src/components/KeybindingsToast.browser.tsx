@@ -134,6 +134,7 @@ function createMinimalSnapshot(): OrchestrationReadModel {
       {
         id: THREAD_ID,
         projectId: PROJECT_ID,
+        threadKind: "agent",
         title: "Test thread",
         modelSelection: {
           provider: "codex",
@@ -193,6 +194,7 @@ function toShellSnapshot(snapshot: OrchestrationReadModel) {
     threads: snapshot.threads.map((thread) => ({
       id: thread.id,
       projectId: thread.projectId,
+      threadKind: thread.threadKind,
       title: thread.title,
       modelSelection: thread.modelSelection,
       runtimeMode: thread.runtimeMode,

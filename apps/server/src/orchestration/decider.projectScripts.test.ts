@@ -136,6 +136,7 @@ describe("decider project scripts", () => {
         payload: {
           threadId: ThreadId.make("thread-1"),
           projectId: asProjectId("project-1"),
+          threadKind: "agent",
           title: "Thread",
           modelSelection: {
             provider: "codex",
@@ -237,6 +238,7 @@ describe("decider project scripts", () => {
         payload: {
           threadId: ThreadId.make("thread-1"),
           projectId: asProjectId("project-1"),
+          threadKind: "agent",
           title: "Thread",
           modelSelection: {
             provider: "codex",
@@ -319,6 +321,7 @@ describe("decider project scripts", () => {
         payload: {
           threadId: ThreadId.make("thread-1"),
           projectId: asProjectId("project-1"),
+          threadKind: "agent",
           title: "Thread",
           modelSelection: {
             provider: "codex",

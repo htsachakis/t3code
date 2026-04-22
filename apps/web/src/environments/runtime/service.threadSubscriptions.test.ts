@@ -96,6 +96,7 @@ function makeThreadShellSnapshot(params: {
       {
         id: params.threadId,
         projectId,
+        threadKind: "agent",
         title: "Thread",
         modelSelection: {
           provider: "codex",

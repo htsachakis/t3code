@@ -336,6 +336,7 @@ function createSnapshotForTargetUser(options: {
       {
         id: THREAD_ID,
         projectId: PROJECT_ID,
+        threadKind: "agent",
         title: THREAD_TITLE,
         modelSelection: {
           provider: "codex",
@@ -401,6 +402,7 @@ function addThreadToSnapshot(
       {
         id: threadId,
         projectId: PROJECT_ID,
+        threadKind: "agent",
         title: "New thread",
         modelSelection: {
           provider: "codex",
@@ -437,6 +439,7 @@ function toShellThread(thread: OrchestrationReadModel["threads"][number]) {
   return {
     id: thread.id,
     projectId: thread.projectId,
+    threadKind: thread.threadKind,
     title: thread.title,
     modelSelection: thread.modelSelection,
     runtimeMode: thread.runtimeMode,
@@ -739,6 +742,7 @@ function createSnapshotWithSecondaryProject(options?: {
         {
           id: "thread-secondary-project" as ThreadId,
           projectId: SECOND_PROJECT_ID,
+          threadKind: "agent",
           title: "Release checklist",
           modelSelection: { provider: "codex", model: "gpt-5" },
           interactionMode: "default",
@@ -771,6 +775,7 @@ function createSnapshotWithSecondaryProject(options?: {
         {
           id: ARCHIVED_SECONDARY_THREAD_ID,
           projectId: SECOND_PROJECT_ID,
+          threadKind: "agent",
           title: "Archived Docs Notes",
           modelSelection: { provider: "codex", model: "gpt-5" },
           interactionMode: "default",
@@ -2409,6 +2414,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
             bootstrap: {
               createThread: {
                 projectId: PROJECT_ID,
+                threadKind: "agent",
               },
               prepareWorktree: {
                 projectCwd: "/repo/project",

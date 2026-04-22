@@ -61,6 +61,7 @@ async function seedReadModel(): Promise<OrchestrationReadModel> {
       payload: {
         threadId: asThreadId("thread-delete-1"),
         projectId: asProjectId("project-delete"),
+        threadKind: "agent",
         title: "Thread Delete 1",
         modelSelection: {
           provider: "codex",
@@ -91,6 +92,7 @@ async function seedReadModel(): Promise<OrchestrationReadModel> {
       payload: {
         threadId: asThreadId("thread-delete-2"),
         projectId: asProjectId("project-delete"),
+        threadKind: "agent",
         title: "Thread Delete 2",
         modelSelection: {
           provider: "codex",
