@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
 import type { Thread } from "../types";
 import {
+  buildRootGroups,
   buildThreadActionItems,
   filterCommandPaletteGroups,
+  type CommandPaletteActionItem,
   type CommandPaletteGroup,
 } from "./CommandPalette.logic";
 
@@ -163,5 +165,81 @@ describe("buildThreadActionItems", () => {
     });
 
     expect(items.map((item) => item.value)).toEqual(["thread:thread-active"]);
+  });
+});
+
+describe("buildRootGroups", () => {
+  function makeAction(value: string, title: string): CommandPaletteActionItem {
+    return {
+      kind: "action",
+      value,
+      searchTerms: [title],
+      title,
+      icon: null,
+      run: async () => undefined,
+    };
+  }
+
+  it("returns coding and chat recent groups separately when both have items", () => {
+    const groups = buildRootGroups({
+      actionItems: [makeAction("action:new-chat", "New chat")],
+      recentThreadItems: [makeAction("thread:agent-1", "Agent thread")],
+      recentChatThreadItems: [makeAction("thread:chat-1", "Chat thread")],
+    });
+
+    expect(groups.map((group) => group.value)).toEqual([
+      "actions",
+      "recent-threads",
+      "recent-chats",
+    ]);
+  });
+
+  it("omits the chats group entirely when there are no recent chat items", () => {
+    const groups = buildRootGroups({
+      actionItems: [makeAction("action:settings", "Settings")],
+      recentThreadItems: [makeAction("thread:agent-1", "Agent thread")],
+      recentChatThreadItems: [],
+    });
+
+    expect(groups.map((group) => group.value)).toEqual(["actions", "recent-threads"]);
+  });
+});
+
+describe("filterCommandPaletteGroups with chat recents", () => {
+  function makeAction(value: string, title: string): CommandPaletteActionItem {
+    return {
+      kind: "action",
+      value,
+      searchTerms: [title],
+      title,
+      icon: null,
+      run: async () => undefined,
+    };
+  }
+
+  it("hides recent-threads and recent-chats once the user starts searching", () => {
+    const activeGroups: CommandPaletteGroup[] = [
+      { value: "actions", label: "Actions", items: [makeAction("action:new-chat", "New chat")] },
+      {
+        value: "recent-threads",
+        label: "Recent Threads",
+        items: [makeAction("thread:agent-1", "Agent thread")],
+      },
+      {
+        value: "recent-chats",
+        label: "Recent Chats",
+        items: [makeAction("thread:chat-1", "Chat thread")],
+      },
+    ];
+
+    const filtered = filterCommandPaletteGroups({
+      activeGroups,
+      query: "new",
+      isInSubmenu: false,
+      projectSearchItems: [],
+      threadSearchItems: [],
+    });
+
+    expect(filtered.map((group) => group.value)).toEqual(["actions"]);
   });
 });

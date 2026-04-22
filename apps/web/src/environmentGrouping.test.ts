@@ -3,6 +3,8 @@ import { scopeProjectRef } from "@t3tools/client-runtime";
 import { describe, expect, it } from "vitest";
 
 import {
+  selectChatSidebarThreadsAcrossEnvironments,
+  selectCodingSidebarThreadsAcrossEnvironments,
   selectProjectsAcrossEnvironments,
   selectSidebarThreadsAcrossEnvironments,
   selectSidebarThreadsForProjectRef,
@@ -471,6 +473,61 @@ describe("environment grouping", () => {
       expect(ids).toContain(threadR1);
       expect(ids).toContain(threadL1);
       expect(ids).toContain(threadRO1);
+    });
+  });
+
+  describe("thread-kind sidebar selectors", () => {
+    function makeMixedKindFixtureState(): AppState {
+      const base = makeFixtureState();
+      const primary = base.environmentStateById[primaryEnvId];
+      if (!primary) throw new Error("primary env state missing");
+      const existingChatAgent = primary.sidebarThreadSummaryById[threadL1];
+      if (!existingChatAgent) throw new Error("thread fixture missing");
+      const chatSummary = makeSidebarThreadSummary({
+        ...existingChatAgent,
+        id: ThreadId.make("chat-thread-primary"),
+        title: "Chat on primary",
+        threadKind: "chat",
+      });
+      const updatedPrimary: EnvironmentState = {
+        ...primary,
+        threadIds: [...primary.threadIds, chatSummary.id],
+        threadIdsByProjectId: {
+          ...primary.threadIdsByProjectId,
+          [chatSummary.projectId]: [
+            ...(primary.threadIdsByProjectId[chatSummary.projectId] ?? []),
+            chatSummary.id,
+          ],
+        },
+        sidebarThreadSummaryById: {
+          ...primary.sidebarThreadSummaryById,
+          [chatSummary.id]: chatSummary,
+        },
+      };
+      return {
+        ...base,
+        environmentStateById: {
+          ...base.environmentStateById,
+          [primaryEnvId]: updatedPrimary,
+        },
+      };
+    }
+
+    it("partitions threads by kind without dropping any", () => {
+      const state = makeMixedKindFixtureState();
+      const all = selectSidebarThreadsAcrossEnvironments(state);
+      const coding = selectCodingSidebarThreadsAcrossEnvironments(state);
+      const chats = selectChatSidebarThreadsAcrossEnvironments(state);
+
+      expect(coding.every((thread) => thread.threadKind !== "chat")).toBe(true);
+      expect(chats.every((thread) => thread.threadKind === "chat")).toBe(true);
+      expect(coding.length + chats.length).toBe(all.length);
+    });
+
+    it("keeps coding selector stable when only chat threads exist", () => {
+      const state = makeFixtureState();
+      expect(selectCodingSidebarThreadsAcrossEnvironments(state)).toHaveLength(5);
+      expect(selectChatSidebarThreadsAcrossEnvironments(state)).toHaveLength(0);
     });
   });
 

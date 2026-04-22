@@ -279,6 +279,29 @@ it.effect("decodes thread.created runtime mode for historical events", () =>
 
     assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
     assert.strictEqual(parsed.modelSelection.provider, "codex");
+    assert.strictEqual(parsed.threadKind, "agent");
+  }),
+);
+
+it.effect('preserves threadKind "chat" on thread.created payloads', () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeThreadCreatedPayload({
+      threadId: "thread-chat-1",
+      projectId: "project-1",
+      threadKind: "chat",
+      title: "Chat thread",
+      modelSelection: {
+        provider: "codex",
+        model: "gpt-5.4",
+      },
+      interactionMode: "default",
+      branch: null,
+      worktreePath: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(parsed.threadKind, "chat");
   }),
 );
 
@@ -311,6 +334,58 @@ it.effect("decodes thread archive and unarchive commands", () =>
 
     assert.strictEqual(archive.type, "thread.archive");
     assert.strictEqual(unarchive.type, "thread.unarchive");
+  }),
+);
+
+it.effect('decodes thread.create with threadKind "chat"', () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeOrchestrationCommand({
+      type: "thread.create",
+      commandId: "cmd-create-chat",
+      threadId: "thread-chat-1",
+      projectId: "project-1",
+      threadKind: "chat",
+      title: "A chat thread",
+      modelSelection: {
+        provider: "codex",
+        model: "gpt-5.4",
+      },
+      runtimeMode: "full-access",
+      branch: null,
+      worktreePath: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(parsed.type, "thread.create");
+    if (parsed.type !== "thread.create") return;
+    assert.strictEqual(parsed.threadKind, "chat");
+    assert.strictEqual(parsed.title, "A chat thread");
+    assert.strictEqual(parsed.branch, null);
+    assert.strictEqual(parsed.worktreePath, null);
+  }),
+);
+
+it.effect('defaults thread.create threadKind to "agent" for historical commands', () =>
+  Effect.gen(function* () {
+    const parsed = yield* decodeOrchestrationCommand({
+      type: "thread.create",
+      commandId: "cmd-create-legacy",
+      threadId: "thread-legacy-1",
+      projectId: "project-1",
+      title: "Legacy thread",
+      modelSelection: {
+        provider: "codex",
+        model: "gpt-5.4",
+      },
+      runtimeMode: "full-access",
+      branch: null,
+      worktreePath: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    assert.strictEqual(parsed.type, "thread.create");
+    if (parsed.type !== "thread.create") return;
+    assert.strictEqual(parsed.threadKind, "agent");
   }),
 );
 

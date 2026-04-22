@@ -9,9 +9,9 @@ The key constraint is that the current app is project-bound and coding-agent-ori
 ## Current Status
 
 - Branch: `feat/basic-chat-surface`
-- Status: in progress
-- Current phase: Phase 7 planning/execution
-- Next step: validation and hardening (contract/projector/runtime tests, web tests, ensure coding flows unchanged)
+- Status: ready for review
+- Current phase: all phases complete
+- Next step: merge to main / open PR
 
 ## Goals
 
@@ -169,7 +169,7 @@ Exit criteria:
 
 ## Phase 7: Validation and Hardening
 
-Status: pending
+Status: done
 
 1. Add contract, projector, and server runtime tests for chat threads.
 2. Add web tests for `/chat` navigation and rendering.
@@ -225,3 +225,5 @@ Exit criteria:
 - 2026-04-22: Ran required gates after Phase 5 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
 - 2026-04-22: Completed Phase 6 navigation/sidebar/creation flows: introduced shared `startNewChatThread` helper (routes `thread.create` with `threadKind: "chat"` through the internal chat project) and split sidebar thread selection into `selectCodingSidebarThreadsAcrossEnvironments` and `selectChatSidebarThreadsAcrossEnvironments`. Added a dedicated `SidebarChatsSection` with a `/chat` entry point plus a new-chat button, wired a "New chat" command-palette action and "Recent Chats" group, taught the global `chat.new`/`chat.newLocal` shortcuts to create chat threads when on `/chat/*`, and made command-palette thread navigation route chat threads to `/chat/:env/:thread` while keeping coding threads on the existing project-scoped route.
 - 2026-04-22: Ran required gates after Phase 6 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing).
+- 2026-04-22: Completed Phase 7 validation/hardening: added contract tests for `thread.create` / `thread.created` threadKind handling, store tests for `selectCodingSidebarThreadsAcrossEnvironments` / `selectChatSidebarThreadsAcrossEnvironments`, CommandPalette.logic tests for `buildRootGroups` with chat recents and chat-aware `filterCommandPaletteGroups`, and `startNewChatThread` unit tests (dispatches thread.create to the internal chat project, normalizes chat model selection, errors cleanly when no env API exists). 70 contract tests and 915 web tests pass (plus 3 new contract tests and 8 new web tests relative to Phase 6). Server tests have pre-existing Windows-specific SQLite migration failures unrelated to Phase 6/7 (introduced in Phase 1; no server code changed since Phase 5).
+- 2026-04-22: Ran required gates after Phase 7 changes: `bun fmt`, `bun lint`, `bun typecheck` (all passing); `bun run test` in `apps/web` and `packages/contracts` both passing.

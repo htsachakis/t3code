@@ -1,8 +1,20 @@
 import { scopeProjectRef } from "@t3tools/client-runtime";
 import { EnvironmentId, ProjectId } from "@t3tools/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { INTERNAL_CHAT_PROJECT_ID } from "@t3tools/shared/chatProject";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const dispatchCommandMock = vi.fn<(command: Record<string, unknown>) => Promise<void>>(
+  async () => undefined,
+);
+const readEnvironmentApiMock = vi.fn<(environmentId: EnvironmentId) => unknown>();
+
+vi.mock("../environmentApi", () => ({
+  readEnvironmentApi: (environmentId: EnvironmentId) => readEnvironmentApiMock(environmentId),
+}));
+
 import {
   resolveThreadActionProjectRef,
+  startNewChatThread,
   startNewLocalThreadFromContext,
   startNewThreadFromContext,
   type ChatThreadActionContext,
@@ -103,5 +115,57 @@ describe("chatThreadActions", () => {
 
     expect(didStart).toBe(false);
     expect(handleNewThread).not.toHaveBeenCalled();
+  });
+});
+
+describe("startNewChatThread", () => {
+  beforeEach(() => {
+    dispatchCommandMock.mockReset();
+    dispatchCommandMock.mockResolvedValue(undefined);
+    readEnvironmentApiMock.mockReset();
+    readEnvironmentApiMock.mockReturnValue({
+      orchestration: {
+        dispatchCommand: dispatchCommandMock,
+      },
+    });
+  });
+
+  it("dispatches thread.create targeting the internal chat project", async () => {
+    const result = await startNewChatThread({ environmentId: ENVIRONMENT_ID });
+
+    expect(readEnvironmentApiMock).toHaveBeenCalledWith(ENVIRONMENT_ID);
+    expect(dispatchCommandMock).toHaveBeenCalledTimes(1);
+    const dispatched = dispatchCommandMock.mock.calls[0]?.[0];
+    expect(dispatched).toMatchObject({
+      type: "thread.create",
+      threadKind: "chat",
+      projectId: INTERNAL_CHAT_PROJECT_ID,
+      branch: null,
+      worktreePath: null,
+    });
+    expect(result.environmentId).toBe(ENVIRONMENT_ID);
+    expect(typeof result.threadId).toBe("string");
+    expect(result.threadId.length).toBeGreaterThan(0);
+  });
+
+  it("normalizes requested chat model selection to a chat-capable provider", async () => {
+    await startNewChatThread({
+      environmentId: ENVIRONMENT_ID,
+      modelSelection: { provider: "cursor", model: "auto" },
+      availableProviders: ["claudeAgent"],
+    });
+
+    const dispatched = dispatchCommandMock.mock.calls[0]?.[0] as {
+      modelSelection?: { provider?: string };
+    };
+    expect(dispatched?.modelSelection?.provider).toBe("claudeAgent");
+  });
+
+  it("throws when no environment API is available", async () => {
+    readEnvironmentApiMock.mockReturnValue(undefined);
+    await expect(startNewChatThread({ environmentId: ENVIRONMENT_ID })).rejects.toThrow(
+      /No environment API available/,
+    );
+    expect(dispatchCommandMock).not.toHaveBeenCalled();
   });
 });
