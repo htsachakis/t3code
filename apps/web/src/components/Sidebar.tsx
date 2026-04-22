@@ -163,6 +163,7 @@ import {
 } from "./Sidebar.logic";
 import { sortThreads } from "../lib/threadSort";
 import { SidebarChatsSection } from "./sidebar/SidebarChatsSection";
+import { type SidebarMode, SidebarModeTabs } from "./sidebar/SidebarModeTabs";
 import { SidebarUpdatePill } from "./sidebar/SidebarUpdatePill";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { CommandDialogTrigger } from "./ui/command";
@@ -2450,7 +2451,6 @@ interface SidebarProjectsContentProps {
   activeRouteProjectKey: string | null;
   routeThreadKey: string | null;
   newThreadShortcutLabel: string | null;
-  commandPaletteShortcutLabel: string | null;
   threadJumpLabelByKey: ReadonlyMap<string, string>;
   attachThreadListAutoAnimateRef: (node: HTMLElement | null) => void;
   expandThreadListForProject: (projectKey: string) => void;
@@ -2490,7 +2490,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
     activeRouteProjectKey,
     routeThreadKey,
     newThreadShortcutLabel,
-    commandPaletteShortcutLabel,
     threadJumpLabelByKey,
     attachThreadListAutoAnimateRef,
     expandThreadListForProject,
@@ -2523,29 +2522,6 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
 
   return (
     <>
-      <SidebarGroup className="px-2 pt-2 pb-1">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <CommandDialogTrigger
-              render={
-                <SidebarMenuButton
-                  size="sm"
-                  className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground focus-visible:ring-0"
-                  data-testid="command-palette-trigger"
-                />
-              }
-            >
-              <SearchIcon className="size-3.5" />
-              <span className="flex-1 truncate text-left text-xs">Search</span>
-              {commandPaletteShortcutLabel ? (
-                <Kbd className="h-4 min-w-0 rounded-sm px-1.5 text-[10px]">
-                  {commandPaletteShortcutLabel}
-                </Kbd>
-              ) : null}
-            </CommandDialogTrigger>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarGroup>
       {showArm64IntelBuildWarning && arm64IntelBuildWarningDescription ? (
         <SidebarGroup className="px-2 pt-2 pb-0">
           <Alert variant="warning" className="rounded-2xl border-warning/40 bg-warning/8">
@@ -2694,6 +2670,27 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (loc) => loc.pathname });
   const isOnSettings = pathname.startsWith("/settings");
+  const isOnChatSurface = pathname.startsWith("/chat");
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() =>
+    isOnChatSurface ? "chat" : "agent",
+  );
+  const lastSyncedChatSurfaceRef = useRef(isOnChatSurface);
+  useEffect(() => {
+    if (lastSyncedChatSurfaceRef.current === isOnChatSurface) return;
+    lastSyncedChatSurfaceRef.current = isOnChatSurface;
+    setSidebarMode(isOnChatSurface ? "chat" : "agent");
+  }, [isOnChatSurface]);
+  const handleSidebarModeChange = useCallback(
+    (nextMode: SidebarMode) => {
+      setSidebarMode(nextMode);
+      if (nextMode === "chat" && !isOnChatSurface) {
+        void navigate({ to: "/chat" });
+      } else if (nextMode === "agent" && isOnChatSurface) {
+        void navigate({ to: "/" });
+      }
+    },
+    [isOnChatSurface, navigate],
+  );
   const sidebarThreadSortOrder = useSettings((s) => s.sidebarThreadSortOrder);
   const sidebarProjectSortOrder = useSettings((s) => s.sidebarProjectSortOrder);
   const sidebarProjectGroupingMode = useSettings((s) => s.sidebarProjectGroupingMode);
@@ -3317,45 +3314,70 @@ export default function Sidebar() {
         <SettingsSidebarNav pathname={pathname} />
       ) : (
         <>
+          <SidebarGroup className="px-2 pt-2 pb-1">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <CommandDialogTrigger
+                  render={
+                    <SidebarMenuButton
+                      size="sm"
+                      className="gap-2 px-2 py-1.5 text-muted-foreground/70 hover:bg-accent hover:text-foreground focus-visible:ring-0"
+                      data-testid="command-palette-trigger"
+                    />
+                  }
+                >
+                  <SearchIcon className="size-3.5" />
+                  <span className="flex-1 truncate text-left text-xs">Search</span>
+                  {commandPaletteShortcutLabel ? (
+                    <Kbd className="h-4 min-w-0 rounded-sm px-1.5 text-[10px]">
+                      {commandPaletteShortcutLabel}
+                    </Kbd>
+                  ) : null}
+                </CommandDialogTrigger>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+          <SidebarModeTabs mode={sidebarMode} onModeChange={handleSidebarModeChange} />
           <SidebarContent className="gap-0">
-            <SidebarProjectsContent
-              showArm64IntelBuildWarning={showArm64IntelBuildWarning}
-              arm64IntelBuildWarningDescription={arm64IntelBuildWarningDescription}
-              desktopUpdateButtonAction={desktopUpdateButtonAction}
-              desktopUpdateButtonDisabled={desktopUpdateButtonDisabled}
-              handleDesktopUpdateButtonClick={handleDesktopUpdateButtonClick}
-              projectSortOrder={sidebarProjectSortOrder}
-              threadSortOrder={sidebarThreadSortOrder}
-              projectGroupingMode={sidebarProjectGroupingMode}
-              updateSettings={updateSettings}
-              openAddProject={openAddProjectCommandPalette}
-              isManualProjectSorting={isManualProjectSorting}
-              projectDnDSensors={projectDnDSensors}
-              projectCollisionDetection={projectCollisionDetection}
-              handleProjectDragStart={handleProjectDragStart}
-              handleProjectDragEnd={handleProjectDragEnd}
-              handleProjectDragCancel={handleProjectDragCancel}
-              handleNewThread={handleNewThread}
-              archiveThread={archiveThread}
-              deleteThread={deleteThread}
-              sortedProjects={sortedProjects}
-              expandedThreadListsByProject={expandedThreadListsByProject}
-              activeRouteProjectKey={activeRouteProjectKey}
-              routeThreadKey={routeThreadKey}
-              newThreadShortcutLabel={newThreadShortcutLabel}
-              commandPaletteShortcutLabel={commandPaletteShortcutLabel}
-              threadJumpLabelByKey={visibleThreadJumpLabelByKey}
-              attachThreadListAutoAnimateRef={attachThreadListAutoAnimateRef}
-              expandThreadListForProject={expandThreadListForProject}
-              collapseThreadListForProject={collapseThreadListForProject}
-              dragInProgressRef={dragInProgressRef}
-              suppressProjectClickAfterDragRef={suppressProjectClickAfterDragRef}
-              suppressProjectClickForContextMenuRef={suppressProjectClickForContextMenuRef}
-              attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
-              projectsLength={projects.length}
-            />
-            <SidebarSeparator />
-            <SidebarChatsSection routeThreadKey={routeThreadKey} />
+            {sidebarMode === "agent" ? (
+              <SidebarProjectsContent
+                showArm64IntelBuildWarning={showArm64IntelBuildWarning}
+                arm64IntelBuildWarningDescription={arm64IntelBuildWarningDescription}
+                desktopUpdateButtonAction={desktopUpdateButtonAction}
+                desktopUpdateButtonDisabled={desktopUpdateButtonDisabled}
+                handleDesktopUpdateButtonClick={handleDesktopUpdateButtonClick}
+                projectSortOrder={sidebarProjectSortOrder}
+                threadSortOrder={sidebarThreadSortOrder}
+                projectGroupingMode={sidebarProjectGroupingMode}
+                updateSettings={updateSettings}
+                openAddProject={openAddProjectCommandPalette}
+                isManualProjectSorting={isManualProjectSorting}
+                projectDnDSensors={projectDnDSensors}
+                projectCollisionDetection={projectCollisionDetection}
+                handleProjectDragStart={handleProjectDragStart}
+                handleProjectDragEnd={handleProjectDragEnd}
+                handleProjectDragCancel={handleProjectDragCancel}
+                handleNewThread={handleNewThread}
+                archiveThread={archiveThread}
+                deleteThread={deleteThread}
+                sortedProjects={sortedProjects}
+                expandedThreadListsByProject={expandedThreadListsByProject}
+                activeRouteProjectKey={activeRouteProjectKey}
+                routeThreadKey={routeThreadKey}
+                newThreadShortcutLabel={newThreadShortcutLabel}
+                threadJumpLabelByKey={visibleThreadJumpLabelByKey}
+                attachThreadListAutoAnimateRef={attachThreadListAutoAnimateRef}
+                expandThreadListForProject={expandThreadListForProject}
+                collapseThreadListForProject={collapseThreadListForProject}
+                dragInProgressRef={dragInProgressRef}
+                suppressProjectClickAfterDragRef={suppressProjectClickAfterDragRef}
+                suppressProjectClickForContextMenuRef={suppressProjectClickForContextMenuRef}
+                attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
+                projectsLength={projects.length}
+              />
+            ) : (
+              <SidebarChatsSection routeThreadKey={routeThreadKey} />
+            )}
           </SidebarContent>
           <SidebarSeparator />
           <SidebarChromeFooter />

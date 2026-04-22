@@ -1,6 +1,6 @@
-import { MessageSquareIcon, MessageSquarePlusIcon, SquarePenIcon, Trash2Icon } from "lucide-react";
+import { MessageSquarePlusIcon, SquarePenIcon, Trash2Icon } from "lucide-react";
 import { memo, useCallback, useMemo } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useShallow } from "zustand/react/shallow";
 import { scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime";
 import type { EnvironmentId, ScopedThreadRef } from "@t3tools/contracts";
@@ -71,22 +71,7 @@ export const SidebarChatsSection = memo(function SidebarChatsSection({
 
   return (
     <SidebarGroup className="px-2 py-2">
-      <div className="mb-1 flex items-center justify-between pl-2 pr-1.5">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Link
-                to="/chat"
-                aria-label="Open chats"
-                className="inline-flex items-center gap-1.5 rounded-sm text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 outline-hidden ring-ring transition-colors hover:text-foreground focus-visible:ring-2"
-              >
-                <MessageSquareIcon className="size-3" />
-                <span>Chats</span>
-              </Link>
-            }
-          />
-          <TooltipPopup side="right">Browse chats</TooltipPopup>
-        </Tooltip>
+      <div className="mb-1 flex items-center justify-end pl-2 pr-1.5">
         <Tooltip>
           <TooltipTrigger
             render={
