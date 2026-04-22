@@ -47,6 +47,7 @@ import { OtlpSerialization, OtlpTracer } from "effect/unstable/observability";
 import { RpcClient, RpcSerialization } from "effect/unstable/rpc";
 import * as Socket from "effect/unstable/socket/Socket";
 import { vi } from "vitest";
+import { INTERNAL_CHAT_PROJECT_ID, INTERNAL_CHAT_PROJECT_TITLE } from "@t3tools/shared/chatProject";
 
 import type { ServerConfigShape } from "./config.ts";
 import { deriveServerPaths, ServerConfig } from "./config.ts";
@@ -3614,6 +3615,159 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
           assert.equal(finalCommand.bootstrap, undefined);
         }
       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("rewrites direct chat thread.create commands to the internal chat project", () =>
+    Effect.gen(function* () {
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      yield* buildAppUnderTest({
+        layers: {
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+            readEvents: () => Stream.empty,
+          },
+        },
+      });
+
+      const createdAt = new Date().toISOString();
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+            type: "thread.create",
+            commandId: CommandId.make("cmd-chat-thread-create"),
+            threadId: ThreadId.make("thread-chat"),
+            projectId: defaultProjectId,
+            threadKind: "chat",
+            title: "Chat thread",
+            modelSelection: defaultModelSelection,
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            branch: "main",
+            worktreePath: "/tmp/should-not-be-used",
+            createdAt,
+          }),
+        ),
+      );
+
+      assert.equal(response.sequence, 2);
+      assert.deepEqual(
+        dispatchedCommands.map((command) => command.type),
+        ["project.create", "thread.create"],
+      );
+      const projectCreateCommand = dispatchedCommands[0];
+      assertTrue(projectCreateCommand?.type === "project.create");
+      if (projectCreateCommand?.type === "project.create") {
+        assert.equal(projectCreateCommand.projectId, INTERNAL_CHAT_PROJECT_ID);
+        assert.equal(projectCreateCommand.title, INTERNAL_CHAT_PROJECT_TITLE);
+      }
+      const threadCreateCommand = dispatchedCommands[1];
+      assertTrue(threadCreateCommand?.type === "thread.create");
+      if (threadCreateCommand?.type === "thread.create") {
+        assert.equal(threadCreateCommand.projectId, INTERNAL_CHAT_PROJECT_ID);
+        assert.equal(threadCreateCommand.threadKind, "chat");
+        assert.equal(threadCreateCommand.branch, null);
+        assert.equal(threadCreateCommand.worktreePath, null);
+      }
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("ignores worktree bootstrap requests for chat thread creation", () =>
+    Effect.gen(function* () {
+      const dispatchedCommands: Array<OrchestrationCommand> = [];
+      const createWorktree = vi.fn((_: Parameters<GitCoreShape["createWorktree"]>[0]) =>
+        Effect.die("createWorktree should not be called for chat bootstrap threads"),
+      );
+      const runForThread = vi.fn(
+        (_: Parameters<ProjectSetupScriptRunnerShape["runForThread"]>[0]) =>
+          Effect.die("runForThread should not be called for chat bootstrap threads"),
+      );
+
+      yield* buildAppUnderTest({
+        layers: {
+          gitCore: {
+            createWorktree,
+          },
+          orchestrationEngine: {
+            dispatch: (command) =>
+              Effect.sync(() => {
+                dispatchedCommands.push(command);
+                return { sequence: dispatchedCommands.length };
+              }),
+            readEvents: () => Stream.empty,
+          },
+          projectSetupScriptRunner: {
+            runForThread,
+          },
+        },
+      });
+
+      const createdAt = new Date().toISOString();
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const response = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[ORCHESTRATION_WS_METHODS.dispatchCommand]({
+            type: "thread.turn.start",
+            commandId: CommandId.make("cmd-chat-bootstrap-turn-start"),
+            threadId: ThreadId.make("thread-chat-bootstrap"),
+            message: {
+              messageId: MessageId.make("msg-chat-bootstrap"),
+              role: "user",
+              text: "hello",
+              attachments: [],
+            },
+            modelSelection: defaultModelSelection,
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            bootstrap: {
+              createThread: {
+                projectId: defaultProjectId,
+                threadKind: "chat",
+                title: "Chat thread",
+                modelSelection: defaultModelSelection,
+                runtimeMode: "full-access",
+                interactionMode: "default",
+                branch: "main",
+                worktreePath: "/tmp/should-not-be-used",
+                createdAt,
+              },
+              prepareWorktree: {
+                projectCwd: "/tmp/project",
+                baseBranch: "main",
+                branch: "t3code/bootstrap-branch",
+              },
+              runSetupScript: true,
+            },
+            createdAt,
+          }),
+        ),
+      );
+
+      assert.equal(response.sequence, 3);
+      assert.deepEqual(
+        dispatchedCommands.map((command) => command.type),
+        ["project.create", "thread.create", "thread.turn.start"],
+      );
+      const threadCreateCommand = dispatchedCommands[1];
+      assertTrue(threadCreateCommand?.type === "thread.create");
+      if (threadCreateCommand?.type === "thread.create") {
+        assert.equal(threadCreateCommand.projectId, INTERNAL_CHAT_PROJECT_ID);
+        assert.equal(threadCreateCommand.threadKind, "chat");
+        assert.equal(threadCreateCommand.branch, null);
+        assert.equal(threadCreateCommand.worktreePath, null);
+      }
+      const finalCommand = dispatchedCommands[2];
+      assertTrue(finalCommand?.type === "thread.turn.start");
+      if (finalCommand?.type === "thread.turn.start") {
+        assert.equal(finalCommand.bootstrap, undefined);
+      }
+      assert.equal(createWorktree.mock.calls.length, 0);
+      assert.equal(runForThread.mock.calls.length, 0);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
   it.effect("records setup-script failures without aborting bootstrap turn start", () =>

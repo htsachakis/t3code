@@ -55,6 +55,12 @@ import { RepositoryIdentityResolver } from "./project/Services/RepositoryIdentit
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import {
+  INTERNAL_CHAT_PROJECT_ID,
+  INTERNAL_CHAT_PROJECT_TITLE,
+  isChatThreadKind,
+  isInternalChatProjectId,
+} from "@t3tools/shared/chatProject";
+import {
   BootstrapCredentialService,
   type BootstrapCredentialChange,
 } from "./auth/Services/BootstrapCredentialService.ts";
@@ -204,6 +210,89 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               cause,
             });
       };
+
+      const ensureInternalChatProject = Effect.fn("ensureInternalChatProject")(function* (
+        createdAt: string,
+      ): Effect.fn.Return<
+        typeof INTERNAL_CHAT_PROJECT_ID,
+        OrchestrationDispatchCommandError
+      > {
+        const projectExists = () =>
+          orchestrationEngine
+            .getReadModel()
+            .pipe(
+              Effect.map((readModel) =>
+                readModel.projects.some(
+                  (project) => isInternalChatProjectId(project.id) && project.deletedAt === null,
+                ),
+              ),
+            );
+
+        if (!(yield* projectExists())) {
+          yield* orchestrationEngine
+            .dispatch({
+              type: "project.create",
+              commandId: serverCommandId("internal-chat-project-create"),
+              projectId: INTERNAL_CHAT_PROJECT_ID,
+              title: INTERNAL_CHAT_PROJECT_TITLE,
+              workspaceRoot: config.cwd,
+              defaultModelSelection: null,
+              createdAt,
+            })
+            .pipe(
+              Effect.mapError((cause) =>
+                toDispatchCommandError(cause, "Failed to ensure internal chat project"),
+              ),
+              Effect.matchEffect({
+                onFailure: (error) =>
+                  projectExists().pipe(
+                    Effect.flatMap((exists) => (exists ? Effect.void : Effect.fail(error))),
+                  ),
+                onSuccess: () => Effect.void,
+              }),
+            );
+        }
+
+        return INTERNAL_CHAT_PROJECT_ID;
+      });
+
+      const normalizeChatThreadCommand = Effect.fn("normalizeChatThreadCommand")(function* (
+        command: OrchestrationCommand,
+      ): Effect.fn.Return<OrchestrationCommand, OrchestrationDispatchCommandError> {
+        if (command.type === "thread.create" && isChatThreadKind(command.threadKind)) {
+          const projectId = yield* ensureInternalChatProject(command.createdAt);
+          return {
+            ...command,
+            projectId,
+            branch: null,
+            worktreePath: null,
+          };
+        }
+
+        if (command.type !== "thread.turn.start") {
+          return command;
+        }
+        const bootstrapCreateThread = command.bootstrap?.createThread;
+        if (!bootstrapCreateThread || !isChatThreadKind(bootstrapCreateThread.threadKind)) {
+          return command;
+        }
+
+        const projectId = yield* ensureInternalChatProject(bootstrapCreateThread.createdAt);
+        return {
+          ...command,
+          bootstrap: {
+            ...command.bootstrap,
+            createThread: {
+              ...bootstrapCreateThread,
+              projectId,
+              branch: null,
+              worktreePath: null,
+            },
+            prepareWorktree: undefined,
+            runSetupScript: false,
+          },
+        };
+      });
 
       const enrichProjectEvent = (
         event: OrchestrationEvent,
@@ -441,7 +530,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                 commandId: serverCommandId("bootstrap-thread-create"),
                 threadId: command.threadId,
                 projectId: bootstrap.createThread.projectId,
-                threadKind: "agent",
+                threadKind: bootstrap.createThread.threadKind,
                 title: bootstrap.createThread.title,
                 modelSelection: bootstrap.createThread.modelSelection,
                 runtimeMode: bootstrap.createThread.runtimeMode,
@@ -490,16 +579,19 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const dispatchNormalizedCommand = (
         normalizedCommand: OrchestrationCommand,
       ): Effect.Effect<{ readonly sequence: number }, OrchestrationDispatchCommandError> => {
-        const dispatchEffect =
-          normalizedCommand.type === "thread.turn.start" && normalizedCommand.bootstrap
-            ? dispatchBootstrapTurnStart(normalizedCommand)
-            : orchestrationEngine
-                .dispatch(normalizedCommand)
-                .pipe(
-                  Effect.mapError((cause) =>
-                    toDispatchCommandError(cause, "Failed to dispatch orchestration command"),
+        const dispatchEffect = normalizeChatThreadCommand(normalizedCommand).pipe(
+          Effect.flatMap((normalizedChatCommand) =>
+            normalizedChatCommand.type === "thread.turn.start" && normalizedChatCommand.bootstrap
+              ? dispatchBootstrapTurnStart(normalizedChatCommand)
+              : orchestrationEngine
+                  .dispatch(normalizedChatCommand)
+                  .pipe(
+                    Effect.mapError((cause) =>
+                      toDispatchCommandError(cause, "Failed to dispatch orchestration command"),
+                    ),
                   ),
-                );
+          ),
+        );
 
         return startup
           .enqueueCommand(dispatchEffect)

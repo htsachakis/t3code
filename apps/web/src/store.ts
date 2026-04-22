@@ -21,6 +21,7 @@ import type {
 import { ProviderKind } from "@t3tools/contracts";
 import type { ThreadId, TurnId } from "@t3tools/contracts";
 import { Schema } from "effect";
+import { isInternalChatProjectId } from "@t3tools/shared/chatProject";
 import { resolveModelSlugForProvider } from "@t3tools/shared/model";
 import { create } from "zustand";
 import {
@@ -493,6 +494,9 @@ function buildTurnDiffSlice(thread: Thread): {
 
 function getProjects(state: EnvironmentState): Project[] {
   return state.projectIds.flatMap((projectId) => {
+    if (isInternalChatProjectId(projectId)) {
+      return [];
+    }
     const project = state.projectById[projectId];
     return project ? [project] : [];
   });

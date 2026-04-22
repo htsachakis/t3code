@@ -25,6 +25,7 @@ import {
   type EnvironmentState,
 } from "./store";
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "./types";
+import { INTERNAL_CHAT_PROJECT_ID } from "@t3tools/shared/chatProject";
 
 const localEnvironmentId = EnvironmentId.make("environment-local");
 const remoteEnvironmentId = EnvironmentId.make("environment-remote");
@@ -501,6 +502,26 @@ describe("incremental orchestration updates", () => {
     expect(localEnvironmentStateOf(next).projectById[recreatedProjectId]?.id).toBe(
       recreatedProjectId,
     );
+  });
+
+  it("keeps the internal chat project out of project selectors", () => {
+    const state: AppState = makeEmptyState({
+      projectIds: [INTERNAL_CHAT_PROJECT_ID],
+      projectById: {
+        [INTERNAL_CHAT_PROJECT_ID]: {
+          id: INTERNAL_CHAT_PROJECT_ID,
+          environmentId: localEnvironmentId,
+          name: "Chats",
+          cwd: "/tmp/project",
+          defaultModelSelection: null,
+          createdAt: "2026-02-27T00:00:00.000Z",
+          updatedAt: "2026-02-27T00:00:00.000Z",
+          scripts: [],
+        },
+      },
+    });
+
+    expect(projectsOf(state)).toEqual([]);
   });
 
   it("removes stale project index entries when thread.created recreates a thread under a new project", () => {
