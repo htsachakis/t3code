@@ -2364,6 +2364,8 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
 }: {
   isElectron: boolean;
 }) {
+  const pathname = useLocation({ select: (loc) => loc.pathname });
+  const isOnChatSurface = pathname.startsWith("/chat");
   const wordmark = (
     <div className="flex items-center gap-2">
       <SidebarTrigger className="shrink-0 md:hidden" />
@@ -2381,6 +2383,9 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
               </span>
               <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60">
                 {APP_STAGE_LABEL}
+              </span>
+              <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60">
+                Chat
               </span>
             </Link>
           }

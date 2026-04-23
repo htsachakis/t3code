@@ -125,6 +125,16 @@ function ChatRouteGlobalShortcuts() {
           handleNewThread,
         });
       }
+
+      if (command === "sidebar.toggleMode") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (isOnChatSurface) {
+          void navigate({ to: "/" });
+        } else {
+          void navigate({ to: "/chat" });
+        }
+      }
     };
 
     window.addEventListener("keydown", onWindowKeyDown);
