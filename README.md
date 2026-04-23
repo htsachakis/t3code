@@ -1,6 +1,14 @@
 # T3 Code
 
-T3 Code is a minimal web GUI for coding agents (currently Codex and Claude, more coming soon).
+T3 Code is a minimal web GUI for AI coding agents and chat. Run Codex and Claude Code sessions, or spin up lightweight AI chat threads with custom personas — all from one interface.
+
+## Features
+
+- **Agent mode** — run Codex or Claude Code sessions with full terminal access
+- **Chat mode** — lightweight chat threads with Codex or Claude, switchable from the sidebar
+- **Personas** — assign a custom system prompt to any chat thread
+- **Keybindings** — fully configurable keyboard shortcuts (see [KEYBINDINGS.md](./KEYBINDINGS.md))
+- **Desktop app** — native Electron shell for Windows, macOS, and Linux
 
 ## Installation
 
@@ -39,24 +47,16 @@ brew install --cask t3-code
 yay -S t3code-bin
 ```
 
-## Some notes
+## Notes
 
-We are very very early in this project. Expect bugs.
+We are very early in this project. Expect bugs.
 
-We are not accepting contributions yet.
+We are not accepting contributions yet. Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
+
+Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
 
 Observability guide: [docs/observability.md](./docs/observability.md)
 
-## If you REALLY want to contribute still.... read this first
+## Local Development
 
-Before local development, prepare the environment and install dependencies:
-
-```bash
-# Optional: only needed if you use mise for dev tool management.
-mise install
-bun install .
-```
-
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening an issue or PR.
-
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+See [BUILD.md](./BUILD.md) for prerequisites, dev commands, build steps, and distribution.
