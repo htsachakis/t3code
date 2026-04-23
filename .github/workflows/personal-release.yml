@@ -68,24 +68,6 @@ jobs:
             target: nsis
             arch: x64
 
-          - label: Linux x64
-            runner: ubuntu-latest
-            platform: linux
-            target: AppImage
-            arch: x64
-
-          - label: macOS arm64
-            runner: macos-latest
-            platform: mac
-            target: dmg
-            arch: arm64
-
-          - label: macOS x64
-            runner: macos-latest
-            platform: mac
-            target: dmg
-            arch: x64
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -105,41 +87,15 @@ jobs:
 
       - name: Build desktop artifact
         shell: bash
-        env:
-          # macOS signing secrets — workflow skips signing gracefully if absent.
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
-          args=(
-            --platform "${{ matrix.platform }}"
-            --target   "${{ matrix.target }}"
-            --arch     "${{ matrix.arch }}"
-            --build-version "${{ needs.preflight.outputs.version }}"
+          # Windows build — unsigned. build-desktop-artifact.ts sets
+          # signAndEditExecutable: false automatically when --signed is absent.
+          bun run dist:desktop:artifact -- \
+            --platform "${{ matrix.platform }}" \
+            --target   "${{ matrix.target }}" \
+            --arch     "${{ matrix.arch }}" \
+            --build-version "${{ needs.preflight.outputs.version }}" \
             --verbose
-          )
-
-          # Enable macOS signing only when all required secrets are present.
-          if [[ "${{ matrix.platform }}" == "mac" ]]; then
-            if [[ -n "$CSC_LINK" && -n "$CSC_KEY_PASSWORD" && \
-                  -n "$APPLE_API_KEY" && -n "$APPLE_API_KEY_ID" && \
-                  -n "$APPLE_API_ISSUER" ]]; then
-              key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
-              printf '%s' "$APPLE_API_KEY" > "$key_path"
-              export APPLE_API_KEY="$key_path"
-              echo "macOS signing enabled."
-              args+=(--signed)
-            else
-              echo "macOS signing disabled (one or more Apple secrets are missing)."
-            fi
-          fi
-
-          # Windows and Linux are always unsigned — build-desktop-artifact.ts
-          # sets signAndEditExecutable: false automatically when --signed is absent.
-
-          bun run dist:desktop:artifact -- "${args[@]}"
 
       - name: Collect release assets
         shell: bash
@@ -159,15 +115,6 @@ jobs:
               cp "$file" release-publish/
             done
           done
-
-          # Suffix the macOS x64 updater manifest so the release job can tell
-          # the two per-arch manifests apart and merge them into one.
-          if [[ "${{ matrix.platform }}" == "mac" && "${{ matrix.arch }}" != "arm64" ]]; then
-            shopt -s nullglob
-            for manifest in release-publish/*-mac.yml; do
-              mv "$manifest" "${manifest%.yml}-${{ matrix.arch }}.yml"
-            done
-          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -191,39 +138,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # Bun + Node + deps are required to run scripts/merge-update-manifests.ts
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: package.json
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
       - name: Download all desktop artifacts
         uses: actions/download-artifact@v8
         with:
           pattern: desktop-*
           merge-multiple: true
           path: release-assets
-
-      - name: Merge macOS updater manifests
-        run: |
-          # Combines latest-mac.yml (arm64) + latest-mac-x64.yml into a single
-          # latest-mac.yml that lists both architectures — mirrors release.yml.
-          shopt -s nullglob
-          for x64_manifest in release-assets/*-mac-x64.yml; do
-            arm64_manifest="${x64_manifest%-x64.yml}.yml"
-            if [[ -f "$arm64_manifest" ]]; then
-              node scripts/merge-update-manifests.ts --platform mac "$arm64_manifest" "$x64_manifest"
-              rm -f "$x64_manifest"
-            fi
-          done
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
