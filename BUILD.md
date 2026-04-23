@@ -3,9 +3,9 @@
 ## Prerequisites
 
 | Tool | Required version |
-|------|-----------------|
-| Bun  | `^1.3.11`       |
-| Node | `^24.13.1`      |
+| ---- | ---------------- |
+| Bun  | `^1.3.11`        |
+| Node | `^24.13.1`       |
 
 Install dependencies:
 
@@ -15,17 +15,17 @@ bun install
 
 ## Project structure
 
-| Package | Path | Description |
-|---------|------|-------------|
-| `t3` (server) | `apps/server` | Node.js WebSocket server, wraps Codex app-server |
-| `@t3tools/web` | `apps/web` | React/Vite UI |
-| `@t3tools/desktop` | `apps/desktop` | Electron desktop shell |
-| `@t3tools/marketing` | `apps/marketing` | Astro marketing site |
-| `@t3tools/contracts` | `packages/contracts` | Shared schemas and TypeScript contracts |
-| `@t3tools/shared` | `packages/shared` | Shared runtime utilities |
-| `@t3tools/client-runtime` | `packages/client-runtime` | Client runtime |
-| `effect-acp` | `packages/effect-acp` | Effect ACP utilities |
-| `effect-codex-app-server` | `packages/effect-codex-app-server` | Codex app-server Effect wrapper |
+| Package                   | Path                               | Description                                      |
+| ------------------------- | ---------------------------------- | ------------------------------------------------ |
+| `t3` (server)             | `apps/server`                      | Node.js WebSocket server, wraps Codex app-server |
+| `@t3tools/web`            | `apps/web`                         | React/Vite UI                                    |
+| `@t3tools/desktop`        | `apps/desktop`                     | Electron desktop shell                           |
+| `@t3tools/marketing`      | `apps/marketing`                   | Astro marketing site                             |
+| `@t3tools/contracts`      | `packages/contracts`               | Shared schemas and TypeScript contracts          |
+| `@t3tools/shared`         | `packages/shared`                  | Shared runtime utilities                         |
+| `@t3tools/client-runtime` | `packages/client-runtime`          | Client runtime                                   |
+| `effect-acp`              | `packages/effect-acp`              | Effect ACP utilities                             |
+| `effect-codex-app-server` | `packages/effect-codex-app-server` | Codex app-server Effect wrapper                  |
 
 ## Versioning
 
@@ -89,11 +89,11 @@ bun build:desktop
 
 Build artifacts go to:
 
-| Package | Output |
-|---------|--------|
-| `apps/desktop` | `apps/desktop/dist-electron/` |
-| `apps/server` | `apps/server/dist/` |
-| `apps/web` | `apps/web/dist/` (also copied to `apps/server/dist/client/`) |
+| Package        | Output                                                       |
+| -------------- | ------------------------------------------------------------ |
+| `apps/desktop` | `apps/desktop/dist-electron/`                                |
+| `apps/server`  | `apps/server/dist/`                                          |
+| `apps/web`     | `apps/web/dist/` (also copied to `apps/server/dist/client/`) |
 
 ### Build marketing site
 
@@ -133,18 +133,24 @@ bun dist:desktop:linux
 node scripts/build-desktop-artifact.ts [flags]
 ```
 
-| Flag | Env var | Description |
-|------|---------|-------------|
-| `--platform` | `T3CODE_DESKTOP_PLATFORM` | `mac`, `linux`, or `win` |
-| `--target` | `T3CODE_DESKTOP_TARGET` | e.g. `dmg`, `AppImage`, `nsis` |
-| `--arch` | `T3CODE_DESKTOP_ARCH` | `arm64`, `x64`, or `universal` |
-| `--build-version` | `T3CODE_DESKTOP_VERSION` | Override app version |
-| `--output-dir` | `T3CODE_DESKTOP_OUTPUT_DIR` | Override output directory |
-| `--skip-build` | `T3CODE_DESKTOP_SKIP_BUILD` | Reuse existing `dist/` artifacts |
-| `--keep-stage` | `T3CODE_DESKTOP_KEEP_STAGE` | Keep temporary staging directory |
-| `--signed` | `T3CODE_DESKTOP_SIGNED` | Enable code signing (Windows: Azure Trusted Signing) |
-| `--verbose` | `T3CODE_DESKTOP_VERBOSE` | Stream subprocess stdout |
-| `--mock-updates` | `T3CODE_DESKTOP_MOCK_UPDATES` | Enable mock auto-updates |
+| Flag              | Env var                       | Description                                          |
+| ----------------- | ----------------------------- | ---------------------------------------------------- |
+| `--platform`      | `T3CODE_DESKTOP_PLATFORM`     | `mac`, `linux`, or `win`                             |
+| `--target`        | `T3CODE_DESKTOP_TARGET`       | e.g. `dmg`, `AppImage`, `nsis`                       |
+| `--arch`          | `T3CODE_DESKTOP_ARCH`         | `arm64`, `x64`, or `universal`                       |
+| `--build-version` | `T3CODE_DESKTOP_VERSION`      | Override app version                                 |
+| `--output-dir`    | `T3CODE_DESKTOP_OUTPUT_DIR`   | Override output directory                            |
+| `--skip-build`    | `T3CODE_DESKTOP_SKIP_BUILD`   | Reuse existing `dist/` artifacts                     |
+| `--keep-stage`    | `T3CODE_DESKTOP_KEEP_STAGE`   | Keep temporary staging directory                     |
+| `--signed`        | `T3CODE_DESKTOP_SIGNED`       | Enable code signing (Windows: Azure Trusted Signing) |
+| `--verbose`       | `T3CODE_DESKTOP_VERBOSE`      | Stream subprocess stdout                             |
+| `--mock-updates`  | `T3CODE_DESKTOP_MOCK_UPDATES` | Enable mock auto-updates                             |
+
+#### Example
+
+```bash
+bun dist:desktop:win --build-version 0.0.20.01
+```
 
 ## Code quality
 
