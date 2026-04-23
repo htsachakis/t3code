@@ -24,7 +24,8 @@ const LAUNCHER_VERSION = 2;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const desktopDir = resolve(__dirname, "..");
 const repoRoot = resolve(desktopDir, "..", "..");
-const defaultIconPath = join(desktopDir, "resources", "icon.icns");
+const defaultMacIconPath = join(desktopDir, "resources", "icon.icns");
+const defaultWinIconPath = join(desktopDir, "resources", "icon.ico");
 const developmentMacIconPngPath = join(repoRoot, "assets", "dev", "blueprint-macos-1024.png");
 
 function setPlistString(plistPath, key, value) {
@@ -61,7 +62,7 @@ function ensureDevelopmentIconIcns(runtimeDir) {
   mkdirSync(runtimeDir, { recursive: true });
 
   if (!existsSync(developmentMacIconPngPath)) {
-    return defaultIconPath;
+    return defaultMacIconPath;
   }
 
   const sourceMtimeMs = statSync(developmentMacIconPngPath).mtimeMs;
@@ -102,7 +103,7 @@ function ensureDevelopmentIconIcns(runtimeDir) {
       "[desktop-launcher] Failed to generate dev macOS icon, falling back to default icon.",
       error,
     );
-    return defaultIconPath;
+    return defaultMacIconPath;
   } finally {
     rmSync(iconsetRoot, { recursive: true, force: true });
   }
@@ -133,7 +134,7 @@ function buildMacLauncher(electronBinaryPath) {
   const runtimeDir = join(desktopDir, ".electron-runtime");
   const targetAppBundlePath = join(runtimeDir, `${APP_DISPLAY_NAME}.app`);
   const targetBinaryPath = join(targetAppBundlePath, "Contents", "MacOS", "Electron");
-  const iconPath = isDevelopment ? ensureDevelopmentIconIcns(runtimeDir) : defaultIconPath;
+  const iconPath = isDevelopment ? ensureDevelopmentIconIcns(runtimeDir) : defaultMacIconPath;
   const metadataPath = join(runtimeDir, "metadata.json");
 
   mkdirSync(runtimeDir, { recursive: true });
@@ -162,9 +163,66 @@ function buildMacLauncher(electronBinaryPath) {
   return targetBinaryPath;
 }
 
-export function resolveElectronPath() {
+async function buildWindowsLauncher(electronBinaryPath) {
+  const runtimeDir = join(desktopDir, ".electron-runtime");
+  const targetBinaryPath = join(runtimeDir, `${APP_DISPLAY_NAME}.exe`);
+  const metadataPath = join(runtimeDir, "windows-metadata.json");
+
+  mkdirSync(runtimeDir, { recursive: true });
+
+  if (!existsSync(defaultWinIconPath)) {
+    console.warn("[desktop-launcher] icon.ico not found, using default Electron icon.");
+    return electronBinaryPath;
+  }
+
+  const expectedMetadata = {
+    launcherVersion: LAUNCHER_VERSION,
+    sourceAppMtimeMs: statSync(electronBinaryPath).mtimeMs,
+    iconMtimeMs: statSync(defaultWinIconPath).mtimeMs,
+  };
+
+  const currentMetadata = readJson(metadataPath);
+  if (
+    existsSync(targetBinaryPath) &&
+    currentMetadata &&
+    JSON.stringify(currentMetadata) === JSON.stringify(expectedMetadata)
+  ) {
+    return targetBinaryPath;
+  }
+
+  // Remove stale binary before copying (avoids write errors if the file already exists)
+  if (existsSync(targetBinaryPath)) {
+    rmSync(targetBinaryPath, { force: true });
+  }
+
+  copyFileSync(electronBinaryPath, targetBinaryPath);
+
+  try {
+    const { default: rcedit } = await import("rcedit");
+    await rcedit(targetBinaryPath, { icon: defaultWinIconPath });
+    writeFileSync(metadataPath, `${JSON.stringify(expectedMetadata, null, 2)}\n`);
+  } catch (error) {
+    console.warn(
+      "[desktop-launcher] Failed to patch Windows exe icon, falling back to default Electron icon.",
+      error,
+    );
+    return electronBinaryPath;
+  }
+
+  return targetBinaryPath;
+}
+
+export async function resolveElectronPath() {
   const require = createRequire(import.meta.url);
   const electronBinaryPath = require("electron");
+
+  if (process.platform === "win32") {
+    // Dev launches do not need icon patching.
+    if (isDevelopment) {
+      return electronBinaryPath;
+    }
+    return buildWindowsLauncher(electronBinaryPath);
+  }
 
   if (process.platform !== "darwin") {
     return electronBinaryPath;

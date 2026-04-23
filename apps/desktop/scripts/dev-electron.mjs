@@ -36,6 +36,8 @@ await waitForResources({
   tcpPort: port,
 });
 
+const electronPath = await resolveElectronPath();
+
 const childEnv = { ...process.env };
 delete childEnv.ELECTRON_RUN_AS_NODE;
 
@@ -68,7 +70,7 @@ function startApp() {
   }
 
   const app = spawn(
-    resolveElectronPath(),
+    electronPath,
     [`--t3code-dev-root=${desktopDir}`, "dist-electron/main.cjs"],
     {
       cwd: desktopDir,
