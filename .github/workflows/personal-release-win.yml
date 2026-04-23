@@ -1,4 +1,4 @@
-name: Personal Release
+name: Personal Release (Windows)
 
 # Triggers on every push to feat/release or manually from the GitHub Actions UI.
 # Version format: <main-3-part-version>.<MY_VERSION>  e.g. 0.0.20.001
@@ -51,22 +51,13 @@ jobs:
           echo "Git tag                  : ${TAG}"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # BUILD — 4 parallel platform builds
+  # BUILD — Windows x64
   # ─────────────────────────────────────────────────────────────────────────────
   build:
-    name: Build ${{ matrix.label }}
+    name: Build Windows x64
     needs: preflight
-    runs-on: ${{ matrix.runner }}
+    runs-on: windows-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: Windows x64
-            runner: windows-latest
-            platform: win
-            target: nsis
-            arch: x64
 
     steps:
       - name: Checkout
@@ -91,9 +82,9 @@ jobs:
           # Windows build — unsigned. build-desktop-artifact.ts sets
           # signAndEditExecutable: false automatically when --signed is absent.
           bun run dist:desktop:artifact -- \
-            --platform "${{ matrix.platform }}" \
-            --target   "${{ matrix.target }}" \
-            --arch     "${{ matrix.arch }}" \
+            --platform win \
+            --target   nsis \
+            --arch     x64 \
             --build-version "${{ needs.preflight.outputs.version }}" \
             --verbose
 
@@ -105,9 +96,6 @@ jobs:
 
           shopt -s nullglob
           for pattern in \
-            "release/*.dmg" \
-            "release/*.zip" \
-            "release/*.AppImage" \
             "release/*.exe" \
             "release/*.blockmap" \
             "release/*.yml"; do
@@ -119,17 +107,17 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          name: desktop-win-x64
           path: release-publish/*
           if-no-files-found: error
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # RELEASE — merge macOS manifests and publish GitHub Release
+  # RELEASE — publish GitHub Release
   # ─────────────────────────────────────────────────────────────────────────────
   release:
     name: Publish GitHub Release
     needs: [preflight, build]
-    # Only run when ALL build matrix jobs succeeded.
+    # Only run when the build job succeeded.
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -154,9 +142,6 @@ jobs:
           make_latest: false
           generate_release_notes: true
           files: |
-            release-assets/*.dmg
-            release-assets/*.zip
-            release-assets/*.AppImage
             release-assets/*.exe
             release-assets/*.blockmap
             release-assets/*.yml
