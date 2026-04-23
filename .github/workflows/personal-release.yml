@@ -1,0 +1,243 @@
+name: Personal Release
+
+# Triggers on every push to feat/release or manually from the GitHub Actions UI.
+# Version format: <main-3-part-version>.<MY_VERSION>  e.g. 0.0.20.001
+on:
+  push:
+    branches:
+      - feat/release
+  workflow_dispatch:
+
+permissions:
+  contents: write  # needed to create GitHub Releases and tags
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PREFLIGHT — compose the personal version string
+  # ─────────────────────────────────────────────────────────────────────────────
+  preflight:
+    name: Preflight — Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      release_name: ${{ steps.version.outputs.release_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compose personal version
+        id: version
+        run: |
+          # Strip any personal suffix that may already be in package.json
+          # (e.g. "0.0.20.02" → "0.0.20") and append MY_VERSION.
+          BASE=$(node -p "require('./apps/desktop/package.json').version.split('.').slice(0,3).join('.')")
+          MY=$(cat MY_VERSION | tr -d '[:space:]')
+
+          if [[ -z "$MY" ]]; then
+            echo "MY_VERSION file is empty. Please set a 3-digit build number (e.g. 001)." >&2
+            exit 1
+          fi
+
+          VERSION="${BASE}.${MY}"
+          TAG="personal-v${VERSION}"
+
+          echo "version=${VERSION}"      >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}"              >> "$GITHUB_OUTPUT"
+          echo "release_name=Personal Build v${VERSION}" >> "$GITHUB_OUTPUT"
+
+          echo "Personal release version : ${VERSION}"
+          echo "Git tag                  : ${TAG}"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # BUILD — 4 parallel platform builds
+  # ─────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.label }}
+    needs: preflight
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows x64
+            runner: windows-latest
+            platform: win
+            target: nsis
+            arch: x64
+
+          - label: Linux x64
+            runner: ubuntu-latest
+            platform: linux
+            target: AppImage
+            arch: x64
+
+          - label: macOS arm64
+            runner: macos-latest
+            platform: mac
+            target: dmg
+            arch: arm64
+
+          - label: macOS x64
+            runner: macos-latest
+            platform: mac
+            target: dmg
+            arch: x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build desktop artifact
+        shell: bash
+        env:
+          # macOS signing secrets — workflow skips signing gracefully if absent.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          args=(
+            --platform "${{ matrix.platform }}"
+            --target   "${{ matrix.target }}"
+            --arch     "${{ matrix.arch }}"
+            --build-version "${{ needs.preflight.outputs.version }}"
+            --verbose
+          )
+
+          # Enable macOS signing only when all required secrets are present.
+          if [[ "${{ matrix.platform }}" == "mac" ]]; then
+            if [[ -n "$CSC_LINK" && -n "$CSC_KEY_PASSWORD" && \
+                  -n "$APPLE_API_KEY" && -n "$APPLE_API_KEY_ID" && \
+                  -n "$APPLE_API_ISSUER" ]]; then
+              key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+              printf '%s' "$APPLE_API_KEY" > "$key_path"
+              export APPLE_API_KEY="$key_path"
+              echo "macOS signing enabled."
+              args+=(--signed)
+            else
+              echo "macOS signing disabled (one or more Apple secrets are missing)."
+            fi
+          fi
+
+          # Windows and Linux are always unsigned — build-desktop-artifact.ts
+          # sets signAndEditExecutable: false automatically when --signed is absent.
+
+          bun run dist:desktop:artifact -- "${args[@]}"
+
+      - name: Collect release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-publish
+
+          shopt -s nullglob
+          for pattern in \
+            "release/*.dmg" \
+            "release/*.zip" \
+            "release/*.AppImage" \
+            "release/*.exe" \
+            "release/*.blockmap" \
+            "release/*.yml"; do
+            for file in $pattern; do
+              cp "$file" release-publish/
+            done
+          done
+
+          # Suffix the macOS x64 updater manifest so the release job can tell
+          # the two per-arch manifests apart and merge them into one.
+          if [[ "${{ matrix.platform }}" == "mac" && "${{ matrix.arch }}" != "arm64" ]]; then
+            shopt -s nullglob
+            for manifest in release-publish/*-mac.yml; do
+              mv "$manifest" "${manifest%.yml}-${{ matrix.arch }}.yml"
+            done
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: release-publish/*
+          if-no-files-found: error
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # RELEASE — merge macOS manifests and publish GitHub Release
+  # ─────────────────────────────────────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: [preflight, build]
+    # Only run when ALL build matrix jobs succeeded.
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # Bun + Node + deps are required to run scripts/merge-update-manifests.ts
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download all desktop artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Merge macOS updater manifests
+        run: |
+          # Combines latest-mac.yml (arm64) + latest-mac-x64.yml into a single
+          # latest-mac.yml that lists both architectures — mirrors release.yml.
+          shopt -s nullglob
+          for x64_manifest in release-assets/*-mac-x64.yml; do
+            arm64_manifest="${x64_manifest%-x64.yml}.yml"
+            if [[ -f "$arm64_manifest" ]]; then
+              node scripts/merge-update-manifests.ts --platform mac "$arm64_manifest" "$x64_manifest"
+              rm -f "$x64_manifest"
+            fi
+          done
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.preflight.outputs.tag }}
+          name: ${{ needs.preflight.outputs.release_name }}
+          prerelease: true
+          make_latest: false
+          generate_release_notes: true
+          files: |
+            release-assets/*.dmg
+            release-assets/*.zip
+            release-assets/*.AppImage
+            release-assets/*.exe
+            release-assets/*.blockmap
+            release-assets/*.yml
+          fail_on_unmatched_files: true
