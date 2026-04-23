@@ -24,7 +24,7 @@ describe("chatProject", () => {
   });
 
   it("returns provider sets by thread kind", () => {
-    expect(providerKindsForThreadKind("chat")).toEqual(["codex", "claudeAgent"]);
+    expect(providerKindsForThreadKind("chat")).toEqual(["codex", "claudeAgent", "opencode"]);
     expect(providerKindsForThreadKind("agent")).toEqual([
       "codex",
       "claudeAgent",
@@ -38,17 +38,22 @@ describe("chatProject", () => {
       { provider: "cursor" as const, label: "Cursor" },
       { provider: "claudeAgent" as const, label: "Claude" },
       { provider: "codex" as const, label: "Codex" },
+      { provider: "opencode" as const, label: "OpenCode" },
     ];
 
     expect(filterEntriesByThreadKindProvider(entries, "chat")).toEqual([
       { provider: "claudeAgent", label: "Claude" },
       { provider: "codex", label: "Codex" },
+      { provider: "opencode", label: "OpenCode" },
     ]);
   });
 
   it("resolves providers using thread-kind restrictions and availability", () => {
     expect(resolveThreadKindProvider({ threadKind: "chat", requestedProvider: "cursor" })).toBe(
       "codex",
+    );
+    expect(resolveThreadKindProvider({ threadKind: "chat", requestedProvider: "opencode" })).toBe(
+      "opencode",
     );
     expect(
       resolveThreadKindProvider({

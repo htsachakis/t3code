@@ -15,6 +15,7 @@ export const INTERNAL_CHAT_PROJECT_TITLE = "Chats";
 const CHAT_THREAD_PROVIDER_KINDS = [
   "codex",
   "claudeAgent",
+  "opencode",
 ] as const satisfies ReadonlyArray<ProviderKind>;
 const AGENT_THREAD_PROVIDER_KINDS = ["codex", "claudeAgent", "cursor", "opencode"] as const;
 

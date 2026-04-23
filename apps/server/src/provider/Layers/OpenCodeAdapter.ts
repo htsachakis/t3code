@@ -1176,12 +1176,18 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
           },
         });
 
+        const trimmedSystemPrompt =
+          typeof input.systemPrompt === "string" && input.systemPrompt.trim().length > 0
+            ? input.systemPrompt
+            : undefined;
+
         yield* runOpenCodeSdk("session.promptAsync", () =>
           context.client.session.promptAsync({
             sessionID: context.openCodeSessionId,
             model: parsedModel,
             ...(context.activeAgent ? { agent: context.activeAgent } : {}),
             ...(context.activeVariant ? { variant: context.activeVariant } : {}),
+            ...(trimmedSystemPrompt !== undefined ? { system: trimmedSystemPrompt } : {}),
             parts: [...(text ? [{ type: "text" as const, text }] : []), ...fileParts],
           }),
         ).pipe(
