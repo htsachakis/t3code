@@ -142,23 +142,6 @@ export function useThreadActions() {
           ].join("\n"),
         ));
 
-      if (thread.session && thread.session.status !== "closed") {
-        await api.orchestration
-          .dispatchCommand({
-            type: "thread.session.stop",
-            commandId: newCommandId(),
-            threadId: threadRef.threadId,
-            createdAt: new Date().toISOString(),
-          })
-          .catch(() => undefined);
-      }
-
-      try {
-        await api.terminal.close({ threadId: threadRef.threadId, deleteHistory: true });
-      } catch {
-        // Terminal may already be closed.
-      }
-
       const deletedThreadIds = deletedIds ?? new Set<ThreadId>();
       const currentRouteThreadRef = getCurrentRouteThreadRef();
       const shouldNavigateToFallback =
@@ -170,11 +153,11 @@ export function useThreadActions() {
         deletedThreadIds,
         sortOrder: sidebarThreadSortOrder,
       });
-      await api.orchestration.dispatchCommand({
-        type: "thread.delete",
-        commandId: newCommandId(),
-        threadId: threadRef.threadId,
-      });
+
+      // Clear local state and navigate to the fallback thread immediately so
+      // the UI stays responsive.  The server-side ThreadDeletionReactor handles
+      // session stop and terminal close when it processes the thread.deleted
+      // event, so we don't need to await those round-trips here.
       clearComposerDraftForThread(threadRef);
       clearProjectDraftThreadById(
         scopeProjectRef(threadRef.environmentId, thread.projectId),
@@ -204,6 +187,14 @@ export function useThreadActions() {
           await router.navigate({ to: isChatThread ? "/chat" : "/", replace: true });
         }
       }
+
+      // Fire the delete command without blocking — the shell stream event will
+      // update the store, and the server reactor cleans up session/terminal.
+      void api.orchestration.dispatchCommand({
+        type: "thread.delete",
+        commandId: newCommandId(),
+        threadId: threadRef.threadId,
+      });
 
       if (!shouldDeleteWorktree || !orphanedWorktreePath || !threadProject) {
         return;
