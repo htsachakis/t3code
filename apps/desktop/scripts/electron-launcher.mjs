@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 const isDevelopment = Boolean(process.env.VITE_DEV_SERVER_URL);
 const APP_DISPLAY_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
 const APP_BUNDLE_ID = isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code";
-const LAUNCHER_VERSION = 2;
+const LAUNCHER_VERSION = 3;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const desktopDir = resolve(__dirname, "..");
@@ -27,6 +27,7 @@ const repoRoot = resolve(desktopDir, "..", "..");
 const defaultMacIconPath = join(desktopDir, "resources", "icon.icns");
 const defaultWinIconPath = join(desktopDir, "resources", "icon.ico");
 const developmentMacIconPngPath = join(repoRoot, "assets", "dev", "blueprint-macos-1024.png");
+const developmentWinIconPath = join(repoRoot, "assets", "dev", "blueprint-windows.ico");
 
 function setPlistString(plistPath, key, value) {
   const replaceResult = spawnSync("plutil", ["-replace", key, "-string", value, plistPath], {
@@ -163,14 +164,14 @@ function buildMacLauncher(electronBinaryPath) {
   return targetBinaryPath;
 }
 
-async function buildWindowsLauncher(electronBinaryPath) {
+async function buildWindowsLauncher(electronBinaryPath, iconPath) {
   const runtimeDir = join(desktopDir, ".electron-runtime");
   const targetBinaryPath = join(runtimeDir, `${APP_DISPLAY_NAME}.exe`);
   const metadataPath = join(runtimeDir, "windows-metadata.json");
 
   mkdirSync(runtimeDir, { recursive: true });
 
-  if (!existsSync(defaultWinIconPath)) {
+  if (!existsSync(iconPath)) {
     console.warn("[desktop-launcher] icon.ico not found, using default Electron icon.");
     return electronBinaryPath;
   }
@@ -178,7 +179,7 @@ async function buildWindowsLauncher(electronBinaryPath) {
   const expectedMetadata = {
     launcherVersion: LAUNCHER_VERSION,
     sourceAppMtimeMs: statSync(electronBinaryPath).mtimeMs,
-    iconMtimeMs: statSync(defaultWinIconPath).mtimeMs,
+    iconMtimeMs: statSync(iconPath).mtimeMs,
   };
 
   const currentMetadata = readJson(metadataPath);
@@ -199,7 +200,7 @@ async function buildWindowsLauncher(electronBinaryPath) {
 
   try {
     const { default: rcedit } = await import("rcedit");
-    await rcedit(targetBinaryPath, { icon: defaultWinIconPath });
+    await rcedit(targetBinaryPath, { icon: iconPath });
     writeFileSync(metadataPath, `${JSON.stringify(expectedMetadata, null, 2)}\n`);
   } catch (error) {
     console.warn(
@@ -217,11 +218,10 @@ export async function resolveElectronPath() {
   const electronBinaryPath = require("electron");
 
   if (process.platform === "win32") {
-    // Dev launches do not need icon patching.
-    if (isDevelopment) {
-      return electronBinaryPath;
-    }
-    return buildWindowsLauncher(electronBinaryPath);
+    const winIconPath = isDevelopment && existsSync(developmentWinIconPath)
+      ? developmentWinIconPath
+      : defaultWinIconPath;
+    return buildWindowsLauncher(electronBinaryPath, winIconPath);
   }
 
   if (process.platform !== "darwin") {

@@ -620,6 +620,11 @@ const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     } else {
       winConfig.signAndEditExecutable = false;
     }
+    // Use afterPack hook to embed the app icon into the EXE via rcedit.
+    // This is needed because `signAndEditExecutable: false` (required for
+    // unsigned builds to avoid winCodeSign download failures) also skips
+    // embedding the icon, leaving the default Electron icon.
+    buildConfig.afterPack = "./afterPack.cjs";
     buildConfig.win = winConfig;
   }
 
@@ -807,6 +812,49 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const stagePackageJsonString = yield* encodeJsonString(stagePackageJson);
   yield* fs.writeFileString(path.join(stageAppDir, "package.json"), `${stagePackageJsonString}\n`);
 
+  // Write the afterPack hook for Windows builds. This uses rcedit to embed
+  // the app icon into the EXE because signAndEditExecutable=false (required
+  // for unsigned builds to avoid winCodeSign download failures) also skips
+  // embedding the icon, leaving the default Electron icon.
+  if (options.platform === "win") {
+    const afterPackScript = `
+"use strict";
+const path = require("path");
+const fs = require("fs");
+const { execFileSync } = require("child_process");
+
+exports.default = async function afterPack(context) {
+  const rceditBinary = process.env.T3CODE_RCEDIT_BINARY;
+  if (!rceditBinary || !fs.existsSync(rceditBinary)) {
+    console.warn("[afterPack] rcedit binary not found, skipping icon embedding");
+    return;
+  }
+
+  const exeName = context.packager.appInfo.productFilename + ".exe";
+  const exePath = path.join(context.appOutDir, exeName);
+  // Use the icon from buildResources (still on disk; app files are in asar).
+  const iconPath = path.join(
+    context.packager.info.projectDir,
+    "apps", "desktop", "resources", "icon.ico",
+  );
+
+  if (!fs.existsSync(exePath)) {
+    console.warn("[afterPack] EXE not found at", exePath);
+    return;
+  }
+
+  if (!fs.existsSync(iconPath)) {
+    console.warn("[afterPack] icon.ico not found at", iconPath);
+    return;
+  }
+
+  console.log("[afterPack] Embedding app icon into", exeName);
+  execFileSync(rceditBinary, [exePath, "--set-icon", iconPath]);
+};
+`.trimStart();
+    yield* fs.writeFileString(path.join(stageAppDir, "afterPack.cjs"), afterPackScript);
+  }
+
   yield* Effect.log("[desktop-artifact] Installing staged production dependencies...");
   yield* runCommand(
     ChildProcess.make({
@@ -842,6 +890,17 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     }
     buildEnv.npm_config_msvs_version = buildEnv.npm_config_msvs_version ?? "2022";
     buildEnv.GYP_MSVS_VERSION = buildEnv.GYP_MSVS_VERSION ?? "2022";
+
+    // Provide the rcedit binary path for the afterPack hook to embed the
+    // app icon into the EXE (signAndEditExecutable=false skips this).
+    const rceditBinary = path.join(
+      repoRoot,
+      "apps/desktop/node_modules/rcedit/bin",
+      process.arch === "x64" || process.arch === "arm64" ? "rcedit-x64.exe" : "rcedit.exe",
+    );
+    if (yield* fs.exists(rceditBinary)) {
+      buildEnv.T3CODE_RCEDIT_BINARY = rceditBinary;
+    }
   }
 
   yield* Effect.log(
