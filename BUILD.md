@@ -149,7 +149,8 @@ node scripts/build-desktop-artifact.ts [flags]
 #### Example
 
 ```bash
-bun dist:desktop:win --build-version 0.0.20.02
+bun dist:desktop:win --build-version "0.0.21.$(Get-Content MY_VERSION)"
+
 ```
 
 ## Code quality
