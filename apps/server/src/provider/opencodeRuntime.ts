@@ -30,6 +30,7 @@ import {
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 import { isWindowsCommandNotFound } from "../processRunner.ts";
+import { resolveOpenCodeExecutable } from "./opencodeExecutable.ts";
 import { collectStreamAsString } from "./providerSnapshot.ts";
 import { NetService } from "@t3tools/shared/Net";
 
@@ -271,9 +272,9 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
 
   const runOpenCodeCommand: OpenCodeRuntimeShape["runOpenCodeCommand"] = (input) =>
     Effect.gen(function* () {
+      const resolvedBinaryPath = resolveOpenCodeExecutable(input.binaryPath);
       const child = yield* spawner.spawn(
-        ChildProcess.make(input.binaryPath, [...input.args], {
-          shell: process.platform === "win32",
+        ChildProcess.make(resolvedBinaryPath, [...input.args], {
           env: process.env,
         }),
       );
@@ -327,9 +328,15 @@ const makeOpenCodeRuntime = Effect.gen(function* () {
       const timeoutMs = input.timeoutMs ?? DEFAULT_OPENCODE_SERVER_TIMEOUT_MS;
       const args = ["serve", `--hostname=${hostname}`, `--port=${port}`];
 
+      // On Windows, npm installs opencode as a .cmd shim that spawn() cannot
+      // execute directly. Resolve it to the underlying .exe so we can spawn
+      // without shell:true, which ensures correct process-tree cleanup when
+      // the scope closes (no orphaned grandchild processes).
+      const resolvedBinaryPath = resolveOpenCodeExecutable(input.binaryPath);
+
       const child = yield* spawner
         .spawn(
-          ChildProcess.make(input.binaryPath, args, {
+          ChildProcess.make(resolvedBinaryPath, args, {
             env: {
               ...process.env,
               OPENCODE_CONFIG_CONTENT: JSON.stringify({}),
