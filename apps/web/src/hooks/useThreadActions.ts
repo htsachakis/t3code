@@ -183,6 +183,7 @@ export function useThreadActions() {
       clearTerminalState(threadRef);
 
       if (shouldNavigateToFallback) {
+        const isChatThread = thread.threadKind === "chat";
         if (fallbackThreadId) {
           const fallbackThread = selectThreadByRef(
             useStore.getState(),
@@ -190,17 +191,17 @@ export function useThreadActions() {
           );
           if (fallbackThread) {
             await router.navigate({
-              to: "/$environmentId/$threadId",
+              to: isChatThread ? "/chat/$environmentId/$threadId" : "/$environmentId/$threadId",
               params: buildThreadRouteParams(
                 scopeThreadRef(fallbackThread.environmentId, fallbackThread.id),
               ),
               replace: true,
             });
           } else {
-            await router.navigate({ to: "/", replace: true });
+            await router.navigate({ to: isChatThread ? "/chat" : "/", replace: true });
           }
         } else {
-          await router.navigate({ to: "/", replace: true });
+          await router.navigate({ to: isChatThread ? "/chat" : "/", replace: true });
         }
       }
 
