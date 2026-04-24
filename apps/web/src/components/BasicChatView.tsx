@@ -9,7 +9,7 @@ import {
   OrchestrationThreadActivity,
 } from "@t3tools/contracts";
 import { scopeProjectRef, scopeThreadRef, scopedThreadKey } from "@t3tools/client-runtime";
-import { applyClaudePromptEffortPrefix } from "@t3tools/shared/model";
+import { applyClaudePromptEffortPrefix, resolvePromptInjectedEffort } from "@t3tools/shared/model";
 import {
   filterEntriesByThreadKindProvider,
   isProviderAllowedForThreadKind,
@@ -101,13 +101,8 @@ function formatOutgoingPrompt(params: {
   text: string;
 }): string {
   const caps = getProviderModelCapabilities(params.models, params.model, params.provider);
-  if (params.effort && caps.promptInjectedEffortLevels.includes(params.effort)) {
-    return applyClaudePromptEffortPrefix(
-      params.text,
-      params.effort as Parameters<typeof applyClaudePromptEffortPrefix>[1],
-    );
-  }
-  return params.text;
+  const promptEffort = resolvePromptInjectedEffort(caps, params.effort);
+  return applyClaudePromptEffortPrefix(params.text, promptEffort);
 }
 
 // ---------------------------------------------------------------------------
